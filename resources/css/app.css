@@ -1,0 +1,166 @@
+/* resources/css/app.css */
+
+/* Tailwind CSS ディレクティブ */
+/* ビルドプロセスで Tailwind の基本スタイル、コンポーネント、ユーティリティに展開されます */
+@import "tailwindcss";
+
+/* ここにプロジェクト固有のカスタムCSSルールを記述します */
+/* @apply を使用すると、Tailwind のユーティリティクラスをカスタムルールに組み込めます */
+
+
+/* ドロワーナビゲーションのスタイルとアニメーション */
+/* position, width, height, transition など、ユーティリティクラスで表現しにくい基本スタイルを定義 */
+.drawer-nav {
+    position: fixed;
+    top: 0;
+    left: -250px; /* 最初は画面外に配置 */
+    width: 250px;
+    height: 100%;
+    z-index: 1020; /* 他の要素より手前に表示 */
+    transition: left 0.3s ease; /* スライドイン/アウトのアニメーション効果 */
+    /* 背景色や影などの見た目は HTML に Tailwind クラスとして記述します */
+}
+
+/* ドロワーが開いている時のスタイル (JavaScript で 'open' クラスが付与される) */
+.drawer-nav.open {
+    left: 0; /* 画面内に移動 */
+}
+
+/* モーダルダイアログの基本スタイル (アニメーション関連スタイルは削除) */
+.modal {
+    /* 背景色、角丸、影、サイズ、flex レイアウトなどは HTML に Tailwind クラスとして記述します */
+    /* スマホ版で実装していた下からのスライドアップアニメーション関連のスタイルは削除しました */
+    /* transform: translateY(100%); */
+    /* transition: transform 0.3s ease-out; */
+}
+
+/* モーダルが表示されるときのアニメーション開始スタイル (アニメーション削除のため通常不要) */
+/* .modal-overlay.show .modal { */
+/* transform: translateY(0); */
+/* } */
+
+
+/* サービス一覧 - 期日接近時のテキスト強調スタイル */
+/* .service-item に near-deadline クラスが付与された際、子孫の .notification-text に適用 */
+/* @apply を使用して Tailwind の text-red-500 と font-bold ユーティリティを適用 */
+/* ビルドプロセスで解釈され、最終的なCSSとして出力されます */
+.service-item.near-deadline .notification-text {
+    @apply text-red-500 font-bold;
+    /* 必要に応じて !important を追加して優先度を強制できますが、 @apply は通常十分な優先度を持ちます */
+    /* 例: @apply text-red-500 !important; font-bold !important; */
+}
+
+/* nav 要素内の button 要素に適用 */
+nav button {
+    /* ブラウザデフォルトの見た目をリセット */
+    appearance: none;
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    margin: 0; /* デフォルトマージンもリセット */
+    text-align: left; /* テキストを左寄せに */
+    cursor: pointer; /* クリック可能であることを示すポインターカーソルに */
+    /* 親要素からフォント関連のスタイルを継承 */
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+    /* クリック時のアウトラインを非表示 (tailwind focus:outline-none と同じ効果) */
+    outline: none;
+}
+
+/* ボタンが Flexbox アイテムとして配置されている場合のスタイル */
+/* Flex アイテムとしての配置は HTML のクラス (flex) で行います */
+nav button.flex {
+    display: flex;
+    align-items: center; /* 垂直方向中央揃え */
+    /* 横方向の配置は Flex コンテナの justify-content や HTML のマージンクラスで行います */
+}
+
+/* !!!今回の修正点!!! Logout ボタンの hover および focus スタイル */
+/* @apply を使用して Tailwind ユーティリティを適用 (ビルドプロセスで解釈される) */
+nav button:hover {
+    @apply text-blue-500; /* hover 時のテキスト色を青に */
+}
+
+nav button:focus {
+    /* HTML に focus:outline-none がありますが、CSSでも明示的にアウトラインをリセット */
+    outline: none;
+}
+
+/* キーボードナビゲーションのためのフォーカスリング (Tab キーなどで要素を選択した際に表示) */
+/* outline:none を使った場合にアクセシビリティのために推奨されるスタイルです */
+nav button:focus-visible {
+    outline: 2px solid currentColor; /* テキスト色で2pxの実線アウトライン */
+    outline-offset: 2px; /* 要素から2px離して表示 */
+}
+
+/* PC向け (md: ブレークポイント以上) 固有のスタイル調整 */
+@media (min-width: 768px) {
+    /* PC版でのモーダル位置に関するスタイル (アニメーション削除により不要となったもの) */
+    /* transform: none !important; などは削除しました */
+    /* .modal { */
+    /* transform: none !important; */
+    /* } */
+
+    /* !!!今回の修正点!!! PC版モーダルの最大高さを調整 */
+    /* モーダル全体の最大高さを、ビューポートの高さからトップマージン (mt-16 = 4rem) を引いた値に設定 */
+    /* これにより、モーダル全体が画面内に収まりやすくなります */
+    .modal {
+        max-height: calc(100vh - 4rem); /* 100vh から mt-16 (64px) 分を引く */
+        /* max-h-[90vh] (90vh) のクラスも HTML に残っていますが、 */
+        /* より具体的なこの calc() が優先されるか、または併用されます */
+    }
+
+
+    /* PC版サービス一覧 - テーブル風レイアウトの項目幅調整 */
+    /* .service-list-header と .service-item の直下の子要素 (各カラム) に適用 */
+    /* flex-basis と width を組み合わせて、カラムの幅を定義します */
+    .service-list-header > div,
+    .service-item > div {
+        /* デフォルトの幅設定 (必要に応じて調整) */
+        flex-basis: 25%;
+        width: 25%;
+        flex-shrink: 0; /* PC表示ではFlexアイテムの縮小を抑制 */
+        /* PC版での左右パディングは HTML に md:px-6 として記述しています */
+    }
+
+    /* 各カラムの固有幅設定 */
+    .service-list-header > div:nth-child(1), /* サービス名カラム */
+    .service-item > div:nth-child(1) { flex-basis: 30%; width: 30%; }
+    .service-list-header > div:nth-child(2), /* 種別カラム */
+    .service-item > div:nth-child(2) { flex-basis: 15%; width: 15%; }
+    .service-list-header > div:nth-child(3), /* 通知対象日カラム */
+    .service-item > div:nth-child(3) { flex-basis: 25%; width: 25%; }
+    .service-list-header > div:nth-child(4), /* メモカラム */
+    .service-item > div:nth-child(4) { flex-basis: 30%; width: 30%; flex-grow: 1; } /* メモ欄は残りのスペースを占める */
+}
+
+/* スマホ向け (md: ブレークポイント未満) 固有のスタイル調整 */
+/* 幅指定などは @media (min-width: 768px) の中に移動したため、ここでは特定の解除スタイルは不要 */
+/* スマホでは HTML に記述された Tailwind クラス (flex-col, w-full など) が適用されます */
+
+
+/* ボディタグのパディング調整 */
+/* スマホ版ヘッダー固定のため、上部にパディングを設けます */
+body {
+    padding-top: 56px; /* スマホ版ヘッダーの高さ (14 units * 4px = 56px) */
+}
+
+/* PC版ではヘッダーがサイドバーの隣に移動するため、ボディのtopパディングは不要 */
+/* 代わりにメインコンテンツ領域に mt-16 と ml-64 を設定しています */
+@media (min-width: 768px) {
+    body {
+        padding-top: 0;
+    }
+}
+
+
+/* PC版サイドバー - 設定/ログアウトメニューのボトム寄せスタイル */
+/* .left-sidebar .global-nav ul 内の .mt-auto クラスを持つ li に適用 */
+/* @apply mt-auto を使用して自動マージンを適用 (ビルドプロセスで解釈される) */
+.left-sidebar .global-nav ul li.mt-auto {
+    @apply mt-auto;
+    /* Tailwind の space-y-4 によるマージンを上書きするために !important が必要になる場合があります */
+    /* 例: margin-top: auto !important; */
+}
