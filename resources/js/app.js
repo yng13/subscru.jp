@@ -1,8 +1,5 @@
 // resources/js/app.js
 
-// !!! 今回の修正点 !!! Laravel の標準 bootstrap.js のインポートを削除
-// import './bootstrap'; // この行を削除
-
 // Alpine.js のインポート
 import Alpine from 'alpinejs';
 import intersect from '@alpinejs/intersect'; // 例: Intersect プラグイン
@@ -22,10 +19,9 @@ function serviceListPage() {
         showAddModal: false,
         showEditModal: false,
         showGuideModal: false,
-        // 削除確認モーダルの状態と削除対象サービス
+        // !!! 今回の追加 !!! 削除確認モーダルの状態と削除対象サービス
         showDeleteConfirmModal: false,
         serviceToDelete: null, // 削除対象のサービスデータを保持
-
         editingService: null, // 編集対象のサービスデータを保持
 
         // トースト通知の状態とメッセージ (メインの x-data で管理)
@@ -40,7 +36,7 @@ function serviceListPage() {
             { id: 2, name: 'Google Drive', type: 'trial', notificationDate: '2026-01-15', memo: 'トライアル終了前に容量を確認...', categoryIcon: 'fas fa-cloud', notificationTiming: '3' },
             { id: 3, name: 'Spotify', type: 'contract', notificationDate: '2025-11-20', memo: 'ファミリープランを契約中...', categoryIcon: 'fas fa-music', notificationTiming: '0' },
             { id: 4, name: 'AWS S3', type: 'contract', notificationDate: '2026-03-01', memo: 'バックアップ用ストレージ...', categoryIcon: 'fas fa-database', notificationTiming: '30' },
-            { id: 5, name: 'Adobe Creative Cloud', type: 'contract', notificationDate: '2025-10-10', memo: '年間プラン', categoryIcon: 'fas fa-paint-brush', notificationTiming: '1' }, // 短くしました
+            { id: 5, name: 'Adobe Creative Cloud', type: 'contract', notificationDate: '2025-10-10', memo: '年間プラン、期限が近い...', categoryIcon: 'fas fa-paint-brush', notificationTiming: '1' },
         ],
 
         // ソートの状態
@@ -73,7 +69,7 @@ function serviceListPage() {
 
             // Debugログ (確認後削除可能)
             const isNear = daysDiff <= 30;
-            console.log(`[getDaysRemaining] Date: ${dateString}, Today: ${today.toISOString().split('T')[0]}, Days Diff: ${daysDiff}, Is Near Deadline: ${isNear}`);
+            //console.log(`[getDaysRemaining] Date: ${dateString}, Today: ${today.toISOString().split('T')[0]}, Days Diff: ${daysDiff}, Is Near Deadline: ${isNear}`);
 
             return daysDiff;
         },
@@ -175,13 +171,9 @@ function serviceListPage() {
             }
         },
 
-        // モーダルを開く関数 (既存) - どのモーダルを開く場合でも呼ばれる
+        // モーダルを開く関数
+        // service オブジェクトを受け取り、編集モーダル用に編集対象として保持
         openModal(modalId, service = null) {
-            console.log('openModal called:', modalId); // Debug log
-            // どのモーダルを開く場合でも、他の開いているモーダルと削除確認ダイアログを閉じる
-            this.closeModals(); // 編集/登録/ガイドモーダルを閉じる
-            this.cancelDelete(); // 削除確認モーダルを閉じる & serviceToDelete をクリア
-
             if (modalId === '#add-modal') {
                 this.showAddModal = true;
                 // TODO: 新規登録フォームをリセットする処理
@@ -189,59 +181,54 @@ function serviceListPage() {
                 this.showEditModal = true;
                 // 編集モーダル表示時に選択されたサービスのデータをセットする処理
                 if (service) {
-                    this.editingService = {...service}; // ディープコピー推奨
+                    // Alpine dataに編集対象サービスを保持 (ディープコピー推奨 if complex object)
+                    this.editingService = {...service}; // サンプルとしてシャローコピー
+                    // モーダル内のフォームにデータをセットする処理は x-model でバインドされているため不要
+                    // document.getElementById('edit-modal-title').innerText = service.name; // これは x-text でバインド済
                 } else {
+                    // serviceが渡されなかった場合（エラー処理など）
                     console.error('Service data not passed to openModal for edit');
+                    // エラーが発生した場合、モーダルを開かないか、エラーメッセージを表示するなどの処理が必要
+                    // this.closeModals(); // エラーなら閉じても良いかも
                 }
             } else if (modalId === '#guide-modal') {
                 this.showGuideModal = true;
             }
         },
 
-        // モーダルをすべて閉じる関数 (既存) - openModal から呼ばれる
+        // モーダルを閉じる関数
         closeModals() {
-            console.log('closeModals called'); // Debug log
             this.showAddModal = false;
             this.showEditModal = false;
             this.showGuideModal = false;
             // 編集中のサービスデータをクリア
             this.editingService = null;
             // TODO: モーダルを閉じた後にフォームをリセットする処理などもここに追加
-            // 削除確認モーダルはここでは閉じない (cancelDelete または deleteService で閉じる)
         },
 
-        // !!! 今回の修正点 !!! 削除確認モーダルを開く関数 - openModal から呼ばれるのではなく、編集モーダル内のボタンから直接呼ばれる
-        // 編集モーダル内の「削除する」ボタンの @click="openDeleteConfirmModal(editingService)" で呼び出し
+        // !!! 今回の追加 !!! 削除確認モーダルを開く関数
         openDeleteConfirmModal(service) {
-            console.log('openDeleteConfirmModal called for service:', service); // Debug log
-
-            // !!! この修正が重要 !!! closeModals() を呼ばず、編集モーダルのみを明示的に閉じる
-            this.showEditModal = false; // 編集モーダルを閉じる
-            this.editingService = null; // 編集中のサービスデータをクリア (これにより編集モーダル内容はDOMから消える)
-
+            this.closeModals(); // 編集モーダルを閉じる
             this.serviceToDelete = service; // 削除対象サービスをセット
-            this.showDeleteConfirmModal = true; // 削除確認モーダルを表示 (ここでダイアログが表示されるはず)
+            this.showDeleteConfirmModal = true; // 削除確認モーダルを表示
         },
 
-        // 削除確認をキャンセルする関数 - 削除確認ダイアログの「キャンセル」ボタン等から呼ばれる
+        // !!! 今回の追加 !!! 削除確認をキャンセルする関数
         cancelDelete() {
-            console.log('cancelDelete called'); // Debug log
             this.showDeleteConfirmModal = false; // 削除確認モーダルを閉じる
             this.serviceToDelete = null; // 削除対象サービスをクリア
             // 必要であれば編集モーダルを再度開くことも可能だが、ここでは閉じっぱなしとする
         },
 
-
-        // サービス保存/更新処理 (モック) - 登録/編集モーダルのボタンから呼ばれる
+        // サービス保存/更新処理 (モック)
         saveService() {
-            console.log('saveService called'); // Debug log at start
             console.log('保存処理を実行', this.editingService);
             // TODO: API連携してデータを保存/更新
             // TODO: services 配列内の該当サービスを更新
 
-            this.closeModals(); // 処理完了後に編集モーダルを閉じる
+            this.closeModals(); // 処理完了後に閉じる
 
-            // 保存成功トースト表示
+            // !!! 今回の追加 !!! 保存成功トースト表示
             this.toastMessage = 'サービスを保存しました！';
             this.toastType = 'success';
             this.showToast = true;
@@ -252,17 +239,16 @@ function serviceListPage() {
             }, 3000); // 3秒表示
         },
 
-        // サービス新規登録処理 (モック) - 登録モーダルのボタンから呼ばれる
+        // サービス新規登録処理 (モック)
         addService() {
-            console.log('addService called'); // Debug log at start
             console.log('登録処理を実行');
             // TODO: フォームからデータを取得
             // TODO: API連携して新規サービスを登録
             // TODO: services 配列に新しいサービスを追加
 
-            this.closeModals(); // 処理完了後に新規登録モーダルを閉じる
+            this.closeModals(); // 処理完了後に閉じる
 
-            // 登録成功トースト表示
+            // !!! 今回の追加 !!! 登録成功トースト表示
             this.toastMessage = '新しいサービスを追加しました！';
             this.toastType = 'success';
             this.showToast = true;
@@ -273,20 +259,15 @@ function serviceListPage() {
             }, 3000); // 3秒表示
         },
 
-        // サービス削除処理 (モック) - 削除確認ダイアログの「削除する」ボタンから呼ばれる
+        // サービス削除処理 (モック)
         deleteService() {
-            console.log('deleteService called'); // Debug log at start
-            // 削除対象サービスは this.serviceToDelete で取得
-            console.log('削除処理を実行', this.serviceToDelete);
-            // TODO: API連携してサービスを削除 (this.serviceToDelete.id を使うなど)
+            console.log('削除処理を実行', this.editingService);
+            // TODO: API連携してサービスを削除
             // TODO: services 配列から該当サービスを削除
 
-            // 削除確認モーダルを閉じる
-            console.log('Closing delete confirmation modal from deleteService'); // Debug log before closing
-            this.showDeleteConfirmModal = false;
-            this.serviceToDelete = null; // 削除対象サービスをクリア
+            this.closeModals(); // 処理完了後に閉じる
 
-            // 削除成功トースト表示
+            // !!! 今回の追加 !!! 削除成功トースト表示
             this.toastMessage = 'サービスを削除しました！';
             this.toastType = 'success'; // 削除成功は success で良いでしょう
             this.showToast = true;
@@ -302,5 +283,7 @@ function serviceListPage() {
 // serviceListPage 関数を 'serviceListPage' という名前で Alpine に登録
 Alpine.data('serviceListPage', serviceListPage);
 
-// Alpine を開始 (bootstrap.js は使わない方針)
+// Alpine を開始
+// 通常は bootstrap.js またはこのファイルで一度だけ呼び出す
+// プロジェクト設定に合わせてどちらか適切な方を使用してください
 Alpine.start();

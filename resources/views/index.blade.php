@@ -378,17 +378,12 @@
                     </form>
                 </div>
                 <div class="modal-footer flex flex-col-reverse md:flex-row md:justify-end gap-3 p-4 border-t border-gray-200">
-                    {{-- !!!今回の修正点!!! 削除ボタンの @click に .stop 修飾子を追加 --}}
-                    {{-- Stop click event propagation to prevent reopening edit modal --}}
-                    <button class="button-danger bg-red-500 text-white font-bold py-2 px-4 rounded hover:bg-red-600 focus:outline-none order-last md:order-first w-full md:w-auto" @click.stop="openDeleteConfirmModal(editingService)">削除する</button> {{-- Added .stop --}}
-
-                    {{-- !!!今回の修正点!!! キャンセルボタンの @click に .stop 修飾子を追加 --}}
-                    {{-- Stop propagation for cancel button as well --}}
-                    <button class="button-secondary bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded hover:bg-gray-400 focus:outline-none modal-close w-full md:w-auto" @click.stop="closeModals()">キャンセル</button> {{-- Added .stop --}}
-
-                    {{-- Submit button for the form --}}
-                    {{-- type="button" に変更し、クリックでフォームを送信してsaveServiceを呼び出す --}}
-                    <button class="button-primary bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 focus:outline-none w-full md:w-auto" type="button" @click="saveService()">保存する</button>
+                    {{-- Delete button calls deleteService method --}}
+                    <button class="button-danger bg-red-500 text-white font-bold py-2 px-4 rounded hover:bg-red-600 focus:outline-none order-last md:order-first w-full md:w-auto" @click="deleteService()">削除する</button>
+                    {{-- Cancel button calls closeModals method --}}
+                    <button class="button-secondary bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded hover:bg-gray-400 focus:outline-none modal-close w-full md:w-auto" @click="closeModals()">キャンセル</button>
+                    {{-- !!!今回の修正点!!! type="button" に変更し、クリックでフォームを送信してsaveServiceを呼び出す --}}
+                    <button class="button-primary bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 focus:outline-none w-full md:w-auto" type="button" @click="saveService()">保存する</button> {{-- Changed type and added @click --}}
                 </div>
             </div> {{-- wrapper div の閉じタグ --}}
         </template> {{-- template x-if の閉じタグ --}}
@@ -444,32 +439,6 @@
         </div>
     </div>
 
-    {{-- !!!今回の追加要素!!! サービス削除確認モーダル --}}
-    {{-- Show/hide based on state --}}
-    {{-- Top margin and horizontal auto margin --}}
-    <div id="delete-confirm-modal" class="modal bg-white rounded-lg shadow-xl w-11/12 md:max-w-sm flex flex-col max-h-[90vh] mt-16 mx-auto"
-         x-show="showDeleteConfirmModal" {{-- showDeleteConfirmModal が true の時だけ表示 --}}
-         @click.stop {{-- モーダル本体クリックでの伝播を止める --}}
-    >
-        <div class="modal-header flex justify-between items-center p-4 border-b border-gray-200">
-            {{-- 削除対象サービスのタイトルを表示 --}}
-            <h2 class="text-lg font-semibold text-gray-900">「<span x-text="serviceToDelete ? serviceToDelete.name : ''"></span>」を削除</h2> {{-- serviceToDelete からサービス名を取得 --}}
-            {{-- Close modal button --}}
-            <button class="modal-close text-gray-500 text-xl hover:text-gray-700 focus:outline-none" @click="cancelDelete()"><i class="fas fa-times"></i></button> {{-- キャンセルメソッドを呼び出す --}}
-        </div>
-        <div class="modal-body p-6 flex-grow overflow-y-auto">
-            {{-- 確認メッセージ --}}
-            <p class="text-gray-700">本当にこのサービスを削除しますか？</p>
-            <p class="text-red-600 font-semibold mt-2">この操作は元に戻せません。</p>
-        </div>
-        <div class="modal-footer flex flex-col-reverse md:flex-row md:justify-end gap-3 p-4 border-t border-gray-200">
-            {{-- キャンセルボタン --}}
-            <button class="button-secondary bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded hover:bg-gray-400 focus:outline-none w-full md:w-auto" @click="cancelDelete()">キャンセル</button>
-            {{-- 削除実行ボタン --}}
-            {{-- クリックで deleteService メソッドを呼び出す --}}
-            <button class="button-danger bg-red-500 text-white font-bold py-2 px-4 rounded hover:bg-red-600 focus:outline-none w-full md:w-auto" @click="deleteService()">削除する</button>
-        </div>
-    </div>
 </div>
 
 {{-- !!!今回の追加要素!!! ログアウトのための隠しフォーム --}}
