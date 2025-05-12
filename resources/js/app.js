@@ -196,28 +196,82 @@ function serviceListPage() {
             }
         },
 
-        // モーダルを閉じる関数
+        // モーダルを閉じる関数 (削除確認モーダルの状態は変更しない)
         closeModals() {
             this.showAddModal = false;
             this.showEditModal = false;
             this.showGuideModal = false;
             // 編集中のサービスデータをクリア
-            this.editingService = null;
+            this.editingService = null; // これは編集モーダルを閉じる際に必要なので維持
+            // showDeleteConfirmModal はこのメソッドでは変更しない
             // TODO: モーダルを閉じた後にフォームをリセットする処理などもここに追加
         },
 
         // !!! 今回の追加 !!! 削除確認モーダルを開く関数
         openDeleteConfirmModal(service) {
-            this.closeModals(); // 編集モーダルを閉じる
-            this.serviceToDelete = service; // 削除対象サービスをセット
-            this.showDeleteConfirmModal = true; // 削除確認モーダルを表示
+            // 編集モーダルを閉じる（重要：編集モーダルが閉じないと、その下の要素へのクリックが伝播してしまいます）
+            this.closeModals();
+            // 削除対象サービスをセット
+            this.serviceToDelete = service;
+            // DEBUG: 確認モーダルを開く直前
+            console.log('削除確認モーダルを開く直前:', this.serviceToDelete);
+
+            // モーダルが完全に閉じ、DOMが安定するのを少し待つ
+            // タイミングの問題を回避するために少し遅延させる
+            setTimeout(() => {
+                this.showDeleteConfirmModal = true; // 削除確認モーダルを表示
+                console.log('削除確認モーダルを開きます', this.serviceToDelete); // デバッグ用ログ
+            }, 50); // 50ミリ秒の遅延（調整可能）
         },
 
         // !!! 今回の追加 !!! 削除確認をキャンセルする関数
         cancelDelete() {
-            this.showDeleteConfirmModal = false; // 削除確認モーダルを閉じる
-            this.serviceToDelete = null; // 削除対象サービスをクリア
-            // 必要であれば編集モーダルを再度開くことも可能だが、ここでは閉じっぱなしとする
+            // 削除確認モーダルを閉じる
+            this.showDeleteConfirmModal = false;
+            // 削除対象サービスをクリア
+            this.serviceToDelete = null;
+            console.log('削除をキャンセルしました'); // デバッグ用ログ
+            // 必要であれば編集モーダルを再度開く処理などをここに追加できますが、今回は閉じっぱなしにします。
+        },
+
+        // サービス削除処理 (モック)
+        deleteService() {
+            // 削除確認モーダルで「削除する」がクリックされた時に serviceToDelete を使用
+            console.log('削除処理を実行', this.serviceToDelete);
+            if (this.serviceToDelete) {
+                // TODO: API連携してサービスを削除 (this.serviceToDelete.id を使用)
+                // 例: this.services = this.services.filter(s => s.id !== this.serviceToDelete.id);
+
+                // モックとしてservices配列から削除
+                this.services = this.services.filter(s => s.id !== this.serviceToDelete.id);
+
+
+                // 処理完了後に削除確認モーダルを閉じる
+                this.showDeleteConfirmModal = false;
+                this.serviceToDelete = null; // 削除対象をクリア
+
+                // !!! 今回の追加 !!! 削除成功トースト表示
+                this.toastMessage = 'サービスを削除しました！';
+                this.toastType = 'success'; // 削除成功は success で良いでしょう
+                this.showToast = true;
+                setTimeout(() => {
+                    this.showToast = false;
+                    this.toastMessage = '';
+                    this.toastType = null;
+                }, 3000); // 3秒表示
+            } else {
+                console.error('削除対象サービスが指定されていません。'); // デバッグ用ログ
+                // エラーメッセージを表示するなどの処理
+                this.toastMessage = 'サービスの削除に失敗しました。';
+                this.toastType = 'error';
+                this.showToast = true;
+                setTimeout(() => {
+                    this.showToast = false;
+                    this.toastMessage = '';
+                    this.toastType = null;
+                }, 5000); // 5秒表示
+                this.showDeleteConfirmModal = false; // エラーでもモーダルは閉じる
+            }
         },
 
         // サービス保存/更新処理 (モック)
@@ -259,24 +313,6 @@ function serviceListPage() {
             }, 3000); // 3秒表示
         },
 
-        // サービス削除処理 (モック)
-        deleteService() {
-            console.log('削除処理を実行', this.editingService);
-            // TODO: API連携してサービスを削除
-            // TODO: services 配列から該当サービスを削除
-
-            this.closeModals(); // 処理完了後に閉じる
-
-            // !!! 今回の追加 !!! 削除成功トースト表示
-            this.toastMessage = 'サービスを削除しました！';
-            this.toastType = 'success'; // 削除成功は success で良いでしょう
-            this.showToast = true;
-            setTimeout(() => {
-                this.showToast = false;
-                this.toastMessage = '';
-                this.toastType = null;
-            }, 3000); // 3秒表示
-        }
     }
 }
 
