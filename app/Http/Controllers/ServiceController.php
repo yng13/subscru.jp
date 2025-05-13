@@ -19,13 +19,11 @@ class ServiceController extends Controller
      */
     public function index(Request $request)
     {
-        // データベースからサービスを取得（認証済みのユーザーに紐づくサービスのみを取得することが重要）
-        // 例: Auth::user()->services()->get(); のようにリレーションを使用
-        // 現状はモックデータを使用しているため、仮に全件取得の例を記載
-        // TODO: 認証ユーザーに紐づくサービスのみを取得するように修正
-        $services = Service::all(); // 例：Service モデルが存在し、Eloquent を使用する場合
+        // 修正: 認証済みのユーザーに紐づくサービスのみを取得
+        // Auth::user() で認証済みのユーザーモデルを取得し、その services リレーションを使用
+        $services = Auth::user()->services()->get();
 
-        // 必要に応じて、ソートやページネーションのクエリパラメータを処理
+        // 必要に応じて、ソートやページネーションのクエリパラメータを処理 (現状はフロントエンドでソート)
         // 例: $sortBy = $request->query('sortBy', 'notificationDate');
         // 例: $sortDirection = $request->query('sortDirection', 'asc');
         // $services = $services->sortBy($sortBy, SORT_REGULAR, $sortDirection === 'desc');
@@ -33,8 +31,8 @@ class ServiceController extends Controller
         // 取得したサービスデータをJSON形式で返す
         return response()->json([
             'services' => $services,
-            'message' => 'サービス一覧を正常に取得しました。', // 必要に応じてメッセージも返す
-        ], 200); // ステータスコード200 (OK)
+            'message' => 'サービス一覧を正常に取得しました。',
+        ], 200);
     }
 
     /**
@@ -58,16 +56,15 @@ class ServiceController extends Controller
         try {
             // TODO: 認証ユーザーのIDを紐づける (認証機能実装後に Auth::id() などを使用)
             // 現状は仮で user_id = 1 を設定します
+            // Auth::id() で認証済みのユーザーIDを取得
             $service = Service::create([
-                'user_id' => 1, // ★仮のユーザーID★ 認証機能実装後に変更
+                'user_id' => Auth::id(), // 認証ユーザーのIDを使用
                 'name' => $validatedData['name'],
                 'type' => $validatedData['type'],
                 'notification_date' => $validatedData['notification_date'],
-                'notification_timing' => $validatedData['notificationTiming'] ?? 0, // nullの場合はデフォルト値0
-                'memo' => $validatedData['memo'] ?? null, // nullの場合はnull
-                // 'category_icon' はリクエストに含まれていない場合、または別途設定する場合
-                // 'category_icon' => $request->input('category_icon', 'fas fa-question-circle'), // デフォルトアイコン例
-                'category_icon' => 'fas fa-question-circle', // 現状は固定アイコンをセット
+                'notification_timing' => $validatedData['notificationTiming'] ?? 0,
+                'memo' => $validatedData['memo'] ?? null,
+                'category_icon' => $request->input('category_icon', 'fas fa-question-circle'), // UIから送られてくるか、デフォルト値を設定
             ]);
 
             // 成功レスポンスを返す
@@ -106,12 +103,19 @@ class ServiceController extends Controller
      */
     public function update(Request $request, Service $service)
     {
-        // TODO: 認証ユーザーがこのサービスを所有しているか確認 (認証機能実装後に)
-        // if ($request->user()->id !== $service->user_id) {
-        //     return response()->json(['message' => 'Unauthorized'], 403);
-        // }
+        // 追加: 認証ユーザーがこのサービスを所有しているか確認
+        // Implicit Model Binding で取得したサービスが認証ユーザーのものであることを確認
+        if ($request->user()->id !== $service->user_id) {
+            // ログ出力して不正アクセスを記録
+            \Log::warning('Unauthorized attempt to update service.', [
+                'user_id' => $request->user()->id,
+                'service_id' => $service->id,
+                'service_owner_id' => $service->user_id,
+            ]);
+            return response()->json(['message' => 'このサービスへのアクセス権限がありません。'], 403); // 403 Forbidden レスポンス
+        }
 
-        // ★追加: リクエストデータのバリデーション★
+        // 追加: リクエストデータのバリデーション
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'type' => ['required', Rule::in(['contract', 'trial'])], // 'contract' または 'trial' のいずれか
@@ -121,7 +125,7 @@ class ServiceController extends Controller
             'category_icon' => 'nullable|string|max:50', // category_icon も更新対象に含める場合
         ]);
 
-        // ★追加: サービスの更新★
+        // 追加: サービスの更新
         try {
             // $service->update() メソッドで更新
             $service->update($validatedData);
@@ -150,12 +154,19 @@ class ServiceController extends Controller
      */
     public function destroy(Service $service)
     {
-        // TODO: 認証ユーザーがこのサービスを所有しているか確認 (認証機能実装後に)
-        // if ($request->user()->id !== $service->user_id) {
-        //     return response()->json(['message' => 'Unauthorized'], 403);
-        // }
+        // 追加: 認証ユーザーがこのサービスを所有しているか確認
+        // Implicit Model Binding で取得したサービスが認証ユーザーのものであることを確認
+        if (Auth::id() !== $service->user_id) {
+            // ログ出力して不正アクセスを記録
+            \Log::warning('Unauthorized attempt to delete service.', [
+                'user_id' => Auth::id(),
+                'service_id' => $service->id,
+                'service_owner_id' => $service->user_id,
+            ]);
+            return response()->json(['message' => 'このサービスへのアクセス権限がありません。'], 403); // 403 Forbidden レスポンス
+        }
 
-        // ★追加: サービスの削除★
+        // 追加: サービスの削除
         try {
             $service->delete();
 

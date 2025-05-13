@@ -14,6 +14,29 @@ function getCsrfToken() {
     return token ? token.content : null;
 }
 
+// API レスポンスのエラー（特に認証エラー）をハンドリングする共通関数
+async function handleApiResponse(response) {
+    // レスポンスのステータスコードをチェック
+    if (!response.ok) {
+        // 認証エラー (401 Unauthorized) の場合、ログイン画面にリダイレクト
+        if (response.status === 401) {
+            // console.log('DEBUG: 401 Unauthorized. Redirecting to login.');
+            window.location.href = '/login'; // Fortify のログインルートにリダイレクト
+            // エラーハンドリングを中断
+            return Promise.reject(new Error('認証されていません。ログインしてください。'));
+        }
+
+        // その他のエラーレスポンスの場合
+        const error = await response.json();
+        // console.error('API Error:', error);
+        // エラーメッセージを返す
+        return Promise.reject(new Error(error.message || `APIリクエスト中にエラーが発生しました (${response.status})。`));
+    }
+
+    // 成功レスポンスの場合はそのままレスポンスオブジェクトを返す
+    return response;
+}
+
 // x-data で使用するデータとメソッドを定義する関数
 function serviceListPage() {
     // Debug: この関数が呼び出されているか確認
@@ -151,6 +174,9 @@ function serviceListPage() {
                     console.error('Failed to fetch services:', error);
                     throw new Error(error.message || `サービスの取得に失敗しました (${response.status})。`); // ステータスコードを含めると分かりやすい
                 }
+
+                // 修正: 共通のエラーハンドリング関数を使用
+                const handledResponse = await handleApiResponse(response);
 
                 // JSON形式でレスポンスボディを取得
                 const data = await response.json();
@@ -408,7 +434,7 @@ function serviceListPage() {
             } else if (modalId === '#edit-modal') {
                 if (service) {
                     this.editingService = {...service}; // ディープコピーが必要な場合は修正
-                    // ★追加: notification_date を YYYY-MM-DD 形式に変換して上書き★
+                    // 追加: notification_date を YYYY-MM-DD 形式に変換して上書き
                     if (this.editingService.notification_date) {
                         const date = new Date(this.editingService.notification_date);
                         // Dateオブジェクトが有効な場合のみフォーマット
@@ -428,7 +454,7 @@ function serviceListPage() {
                         this.editingService.notification_date = ''; // 空にする例
                     }
 
-                    // ★追加: editingService がセットされた直後のログ★
+                    // 追加: editingService がセットされた直後のログ
                     console.log('DEBUG: editingService set:', JSON.parse(JSON.stringify(this.editingService)));
                     console.log('DEBUG: editingService.notification_date:', this.editingService.notification_date, typeof this.editingService.notification_date);
 
@@ -513,7 +539,7 @@ function serviceListPage() {
 
             this.isLoading = true; // ロード開始
             try {
-                // ★修正: バックエンドAPIへのPUTリクエストを実装★
+                // 修正: バックエンドAPIへのPUTリクエストを実装
                 // 更新対象のサービスのIDをURLに含めます
                 const response = await fetch(`/api/services/${this.editingService.id}`, {
                     method: 'PUT', // 更新なのでPUTメソッド (バックエンドに合わせてください)
@@ -552,6 +578,9 @@ function serviceListPage() {
                         throw new Error(error.message || 'サービスの保存に失敗しました。');
                     }
                 }
+
+                // 修正: 共通のエラーハンドリング関数を使用
+                const handledResponse = await handleApiResponse(response);
 
                 // 成功レスポンスの場合
                 const result = await response.json();
@@ -629,7 +658,7 @@ function serviceListPage() {
                     body: JSON.stringify({
                         name: this.addModalForm.name,
                         type: this.addModalForm.type,
-                        notification_date: this.addModalForm.notification_date, // ★修正: APIキー名に合わせる★
+                        notification_date: this.addModalForm.notification_date, // 修正: APIキー名に合わせる
                         notificationTiming: parseInt(this.addModalForm.notificationTiming, 10), // 数値に変換
                         memo: this.addModalForm.memo,
                         // カテゴリアイコンは現在フォームにないので、ここでは送信しないか、固定値を送る
@@ -729,6 +758,9 @@ function serviceListPage() {
                 // const result = await response.json();
                 console.log('サービスを正常に削除しました', this.serviceToDelete.id);
 
+                // 修正: 共通のエラーハンドリング関数を使用
+                const handledResponse = await handleApiResponse(response);
+
                 // 削除成功後、再度サービス一覧を取得して表示を更新
                 await this.fetchServices(); // サービスの再取得
 
@@ -764,7 +796,12 @@ function serviceListPage() {
         // ページの初期化処理としてサービス取得を呼び出す
         init() {
             console.log('Alpine component initialized');
-            this.fetchServices(); // コンポーネント初期化時にサービス一覧を取得
+            // コンポーネント初期化時に認証状態を確認し、必要であればサービス一覧を取得
+            // Bladeアプリケーションでは、ログイン済みであればこのページが表示されているはずなので、
+            // ここでfetchServicesを呼び出すのは適切です。
+            // 未ログイン時にこのページにアクセスしようとすると、Fortifyのミドルウェアが
+            // ログインページへリダイレクトするため、未ログインでfetchServicesが実行されることはありません。
+            this.fetchServices();
         },
     }
 }
