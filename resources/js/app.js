@@ -12,6 +12,12 @@ function serviceListPage() {
     // Debug: この関数が呼び出されているか確認
     console.log('serviceListPage function called, initializing data...');
 
+    // バリデーションエラーメッセージの定義
+    const validationMessages = {
+        required: 'この項目は必須です。',
+        invalidDate: '有効な日付を入力してください。'
+    };
+
     return {
         // === State properties ===
         isDrawerOpen: false,
@@ -43,7 +49,119 @@ function serviceListPage() {
         sortBy: 'notificationDate', // 初期ソートキー
         sortDirection: 'asc', // 'asc' or 'desc'
 
+        // サービス登録モーダルのフォーム状態とバリデーションエラー
+        addModalForm: {
+            name: '',
+            type: '', // ラジオボタンは初期値 null または '' が良い
+            notificationDate: '',
+            notificationTiming: '0', // select の初期値
+            memo: '',
+            errors: {
+                name: '',
+                type: '',
+                notificationDate: ''
+            },
+            isValid: false // フォーム全体の有効性
+        },
+
+        // サービス編集モーダルのフォーム状態とバリデーションエラー
+        // 編集モーダルは editingService とデータを共有するため、エラー状態のみを別途管理
+        editModalFormErrors: {
+            name: '',
+            type: '',
+            notificationDate: ''
+        },
+
         // === Methods ===
+
+        // 特定のフィールドのバリデーションを行う関数
+        // field: フィールド名 ('name', 'type', 'notificationDate')
+        // value: フィールドの値
+        // formType: 'add' or 'edit'
+        validateField(field, value, formType) {
+            let errorMessage = '';
+            let formErrors;
+
+            if (formType === 'add') {
+                formErrors = this.addModalForm.errors;
+            } else if (formType === 'edit') {
+                formErrors = this.editModalFormErrors;
+            } else {
+                return; // 不正な formType
+            }
+
+            // 必須チェック
+            if (!value || (typeof value === 'string' && value.trim() === '')) {
+                errorMessage = validationMessages.required;
+            } else {
+                // 日付フィールドの追加バリデーション
+                if (field === 'notificationDate') {
+                    const date = new Date(value);
+                    if (isNaN(date.getTime())) {
+                        errorMessage = validationMessages.invalidDate;
+                    }
+                }
+            }
+
+            // エラーメッセージを更新
+            formErrors[field] = errorMessage;
+
+            // フォーム全体の有効性を更新 (今回は必須チェックのみなのでシンプル)
+            if (formType === 'add') {
+                this.addModalForm.isValid = this.addModalForm.errors.name === '' &&
+                    this.addModalForm.errors.type === '' &&
+                    this.addModalForm.errors.notificationDate === '';
+            }
+            // 編集モーダルのisValidは今回は使用しないが、必要に応じて同様に定義
+        },
+
+        // サービス登録フォーム全体のバリデーションを行う関数
+        validateAddForm() {
+            this.validateField('name', this.addModalForm.name, 'add');
+            this.validateField('type', this.addModalForm.type, 'add');
+            this.validateField('notificationDate', this.addModalForm.notificationDate, 'add');
+
+            // フォーム全体の有効性を返す
+            return this.addModalForm.isValid;
+        },
+
+        // サービス編集フォーム全体のバリデーションを行う関数
+        validateEditForm() {
+            // editingService の値を使ってバリデーション
+            if (!this.editingService) return false; // editingService がなければ無効
+
+            this.validateField('name', this.editingService.name, 'edit');
+            this.validateField('type', this.editingService.type, 'edit');
+            this.validateField('notificationDate', this.editingService.notificationDate, 'edit');
+
+            // フォーム全体の有効性を計算して返す (プロパティとしては持たないが、関数で計算)
+            return this.editModalFormErrors.name === '' &&
+                this.editModalFormErrors.type === '' &&
+                this.editModalFormErrors.notificationDate === '';
+        },
+
+        // フォームの状態をリセットする関数 (新規登録用)
+        resetAddForm() {
+            console.log('新規登録フォームをリセット');
+            this.addModalForm.name = '';
+            this.addModalForm.type = '';
+            this.addModalForm.notificationDate = '';
+            this.addModalForm.notificationTiming = '0';
+            this.addModalForm.memo = '';
+            // エラーメッセージもクリア
+            this.addModalForm.errors.name = '';
+            this.addModalForm.errors.type = '';
+            this.addModalForm.errors.notificationDate = '';
+            this.addModalForm.isValid = false;
+        },
+
+        // 編集モーダルを開く際にエラー状態をリセットする関数
+        resetEditFormErrors() {
+            console.log('編集フォームのエラーをリセット');
+            this.editModalFormErrors.name = '';
+            this.editModalFormErrors.type = '';
+            this.editModalFormErrors.notificationDate = '';
+        },
 
         // 通知対象日の残り日数を計算する関数
         getDaysRemaining(dateString) {
@@ -175,25 +293,32 @@ function serviceListPage() {
         // service オブジェクトを受け取り、編集モーダル用に編集対象として保持
         openModal(modalId, service = null) {
             if (modalId === '#add-modal') {
+                this.resetAddForm(); // 新規登録モーダルを開く前にフォームをリセット
                 this.showAddModal = true;
-                // TODO: 新規登録フォームをリセットする処理
             } else if (modalId === '#edit-modal') {
-                this.showEditModal = true;
-                // 編集モーダル表示時に選択されたサービスのデータをセットする処理
                 if (service) {
-                    // Alpine dataに編集対象サービスを保持 (ディープコピー推奨 if complex object)
-                    this.editingService = {...service}; // サンプルとしてシャローコピー
-                    // モーダル内のフォームにデータをセットする処理は x-model でバインドされているため不要
-                    // document.getElementById('edit-modal-title').innerText = service.name; // これは x-text でバインド済
+                    this.editingService = {...service}; // ディープコピーが必要な場合は修正
+                    this.resetEditFormErrors(); // 編集モーダルを開く前にエラーをリセット
+                    this.showEditModal = true;
+                    console.log('編集モーダルを開きます', this.editingService);
                 } else {
-                    // serviceが渡されなかった場合（エラー処理など）
                     console.error('Service data not passed to openModal for edit');
-                    // エラーが発生した場合、モーダルを開かないか、エラーメッセージを表示するなどの処理が必要
-                    // this.closeModals(); // エラーなら閉じても良いかも
+                    // エラー処理など
+                    this.toastMessage = 'サービスの編集に失敗しました。';
+                    this.toastType = 'error';
+                    this.showToast = true;
+                    setTimeout(() => {
+                        this.showToast = false;
+                        this.toastMessage = '';
+                        this.toastType = null;
+                    }, 5000);
                 }
             } else if (modalId === '#guide-modal') {
                 this.showGuideModal = true;
             }
+            // 削除確認モーダルは openDeleteConfirmModal で開くので、ここでは閉じます
+            this.showDeleteConfirmModal = false;
+            this.serviceToDelete = null;
         },
 
         // モーダルを閉じる関数 (削除確認モーダルの状態は変更しない)
@@ -276,13 +401,27 @@ function serviceListPage() {
 
         // サービス保存/更新処理 (モック)
         saveService() {
+            // 編集フォームのバリデーションを実行
+            if (!this.validateEditForm()) {
+                console.log('編集フォームにバリデーションエラーがあります。');
+                this.toastMessage = '入力内容に不備があります。ご確認ください。';
+                this.toastType = 'error';
+                this.showToast = true;
+                setTimeout(() => {
+                    this.showToast = false;
+                    this.toastMessage = '';
+                    this.toastType = null;
+                }, 5000);
+                return; // バリデーション失敗時は処理を中断
+            }
+
             console.log('保存処理を実行', this.editingService);
             // TODO: API連携してデータを保存/更新
             // TODO: services 配列内の該当サービスを更新
 
             this.closeModals(); // 処理完了後に閉じる
 
-            // !!! 今回の追加 !!! 保存成功トースト表示
+            // 保存成功トースト表示
             this.toastMessage = 'サービスを保存しました！';
             this.toastType = 'success';
             this.showToast = true;
@@ -295,6 +434,20 @@ function serviceListPage() {
 
         // サービス新規登録処理 (モック)
         addService() {
+            // 新規登録フォームのバリデーションを実行
+            if (!this.validateAddForm()) {
+                console.log('新規登録フォームにバリデーションエラーがあります。');
+                this.toastMessage = '入力内容に不備があります。ご確認ください。';
+                this.toastType = 'error';
+                this.showToast = true;
+                setTimeout(() => {
+                    this.showToast = false;
+                    this.toastMessage = '';
+                    this.toastType = null;
+                }, 5000);
+                return; // バリデーション失敗時は処理を中断
+            }
+
             console.log('登録処理を実行');
             // TODO: フォームからデータを取得
             // TODO: API連携して新規サービスを登録
@@ -302,7 +455,7 @@ function serviceListPage() {
 
             this.closeModals(); // 処理完了後に閉じる
 
-            // !!! 今回の追加 !!! 登録成功トースト表示
+            // 登録成功トースト表示
             this.toastMessage = '新しいサービスを追加しました！';
             this.toastType = 'success';
             this.showToast = true;

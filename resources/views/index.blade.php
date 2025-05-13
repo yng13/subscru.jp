@@ -280,20 +280,45 @@
             <form> {{-- Removed @submit.prevent --}}
                 <div class="mb-4">
                     <label for="service-name" class="block font-medium text-gray-900 mb-1">サービス名</label>
-                    <input type="text" id="service-name" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200" placeholder="例: Netflix" required>
+                    {{-- x-model でデータをバインド --}}
+                    {{-- @input と @blur でバリデーションメソッドを呼び出し --}}
+                    <input type="text" id="service-name"
+                           class="w-full p-2 border rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
+                           :class="{ 'border-red-500': addModalForm.errors.name }" {{-- エラーがある場合は赤枠 --}}
+                           placeholder="例: Netflix" required
+                           x-model="addModalForm.name"
+                           @input="validateField('name', $event.target.value, 'add')"
+                           @blur="validateField('name', $event.target.value, 'add')"
+                    >
+                    {{-- エラーメッセージを表示 --}}
+                    <p class="text-red-500 text-sm mt-1" x-text="addModalForm.errors.name" x-show="addModalForm.errors.name"></p>
                 </div>
                 <div class="mb-4">
                     <label class="block font-medium text-gray-900 mb-1">種別</label>
-                    <div>
-                        <input type="radio" id="type-trial" name="service-type" value="trial" class="mr-1" required>
+                    <div @change="validateField('type', addModalForm.type, 'add')"> {{-- 親要素で @change をリッスン --}}
+                        {{-- x-model で addModalForm.type にバインド --}}
+                        <input type="radio" id="type-trial" name="service-type" value="trial" class="mr-1" x-model="addModalForm.type" required>
                         <label for="type-trial" class="mr-4 text-gray-700">トライアル中</label>
-                        <input type="radio" id="type-contract" name="service-type" value="contract" class="mr-1" required>
+                        <input type="radio" id="type-contract" name="service-type" value="contract" class="mr-1" x-model="addModalForm.type" required>
                         <label for="type-contract" class="text-gray-700">契約中</label>
                     </div>
+                    {{-- エラーメッセージを表示 --}}
+                    <p class="text-red-500 text-sm mt-1" x-text="addModalForm.errors.type" x-show="addModalForm.errors.type"></p>
                 </div>
                 <div class="mb-4">
                     <label for="notification-date" class="block font-medium text-gray-900 mb-1">通知対象日</label>
-                    <input type="date" id="notification-date" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200" required>
+                    {{-- x-model でデータをバインド --}}
+                    {{-- @input と @blur でバリデーションメソッドを呼び出し --}}
+                    <input type="date" id="notification-date"
+                           class="w-full p-2 border rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
+                           :class="{ 'border-red-500': addModalForm.errors.notificationDate }" {{-- エラーがある場合は赤枠 --}}
+                           required
+                           x-model="addModalForm.notificationDate"
+                           @input="validateField('notificationDate', $event.target.value, 'add')"
+                           @blur="validateField('notificationDate', $event.target.value, 'add')"
+                    >
+                    {{-- エラーメッセージを表示 --}}
+                    <p class="text-red-500 text-sm mt-1" x-text="addModalForm.errors.notificationDate" x-show="addModalForm.errors.notificationDate"></p>
                 </div>
                 <div class="mb-4">
                     <label for="notification-timing" class="block font-medium text-gray-900 mb-1">通知タイミング</label>
@@ -341,23 +366,45 @@
                     <form> {{-- Removed @submit.prevent --}}
                         <div class="mb-4">
                             <label for="edit-service-name" class="block font-medium text-gray-900 mb-1">サービス名</label>
-                            {{-- Bind input value to editingService data --}}
-                            <input type="text" id="edit-service-name" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200" x-model="editingService.name" required>
+                            {{-- x-model で editingService.name をバインド --}}
+                            {{-- @input と @blur でバリデーションメソッドを呼び出し --}}
+                            <input type="text" id="edit-service-name"
+                                   class="w-full p-2 border rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
+                                   :class="{ 'border-red-500': editModalFormErrors.name }" {{-- エラーがある場合は赤枠 --}}
+                                   x-model="editingService.name"
+                                   @input="validateField('name', editingService.name, 'edit')" {{-- editingService.name を渡す --}}
+                                   @blur="validateField('name', editingService.name, 'edit')" {{-- editingService.name を渡す --}}
+                                   required
+                            >
+                            {{-- エラーメッセージを表示 --}}
+                            <p class="text-red-500 text-sm mt-1" x-text="editModalFormErrors.name" x-show="editModalFormErrors.name"></p>
                         </div>
                         <div class="mb-4">
                             <label class="block font-medium text-gray-900 mb-1">種別</label>
-                            <div>
-                                {{-- Bind radio buttons to editingService data --}}
+                            <div @change="validateField('type', editingService.type, 'edit')"> {{-- 親要素で @change をリッスン --}}
+                                {{-- x-model で editingService.type にバインド --}}
                                 <input type="radio" id="edit-type-trial" name="edit-service-type" value="trial" class="mr-1" x-model="editingService.type">
                                 <label for="edit-type-trial" class="mr-4 text-gray-700">トライアル中</label>
                                 <input type="radio" id="edit-type-contract" name="edit-service-type" value="contract" class="mr-1" x-model="editingService.type">
                                 <label for="edit-type-contract" class="text-gray-700">契約中</label>
                             </div>
+                            {{-- エラーメッセージを表示 --}}
+                            <p class="text-red-500 text-sm mt-1" x-text="editModalFormErrors.type" x-show="editModalFormErrors.type"></p>
                         </div>
                         <div class="mb-4">
                             <label for="edit-notification-date" class="block font-medium text-gray-900 mb-1">通知対象日</label>
-                            {{-- Bind input value to editingService data --}}
-                            <input type="date" id="edit-notification-date" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200" x-model="editingService.notificationDate" required>
+                            {{-- x-model で editingService.notificationDate をバインド --}}
+                            {{-- @input と @blur でバリデーションメソッドを呼び出し --}}
+                            <input type="date" id="edit-notification-date"
+                                   class="w-full p-2 border rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
+                                   :class="{ 'border-red-500': editModalFormErrors.notificationDate }" {{-- エラーがある場合は赤枠 --}}
+                                   x-model="editingService.notificationDate"
+                                   @input="validateField('notificationDate', editingService.notificationDate, 'edit')" {{-- editingService.notificationDate を渡す --}}
+                                   @blur="validateField('notificationDate', editingService.notificationDate, 'edit')" {{-- editingService.notificationDate を渡す --}}
+                                   required
+                            >
+                            {{-- エラーメッセージを表示 --}}
+                            <p class="text-red-500 text-sm mt-1" x-text="editModalFormErrors.notificationDate" x-show="editModalFormErrors.notificationDate"></p>
                         </div>
                         <div class="mb-4">
                             <label for="edit-notification-timing" class="block font-medium text-gray-900 mb-1">通知タイミング</label>
