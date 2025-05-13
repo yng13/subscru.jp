@@ -8,12 +8,13 @@ use App\Http\Controllers\ServiceController;
 
 // サービス一覧の取得
 Route::get('/services', [ServiceController::class, 'index']);
+// サービス追加
+Route::post('/services', [ServiceController::class, 'store']);
 
 // 認証済みのユーザーのみアクセス可能なAPIルートのグループ
 Route::middleware('auth:sanctum')->group(function () {
 
     // TODO: 今後追加するAPI
-    // Route::post('/services', [ServiceController::class, 'store']); // サービス追加
     // Route::get('/services/{service}', [ServiceController::class, 'show']); // サービス詳細取得
     // Route::put('/services/{service}', [ServiceController::class, 'update']); // サービス更新
     // Route::delete('/services/{service}', [ServiceController::class, 'destroy']); // サービス削除

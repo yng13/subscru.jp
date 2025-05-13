@@ -201,7 +201,7 @@ function serviceListPage() {
                 errorMessage = validationMessages.required;
             } else {
                 // 日付フィールドの追加バリデーション
-                if (field === 'notificationDate') {
+                if (field === 'notification_date') {
                     const date = new Date(value);
                     if (isNaN(date.getTime())) {
                         errorMessage = validationMessages.invalidDate;
@@ -558,23 +558,41 @@ function serviceListPage() {
 
             console.log('登録処理を実行 (バックエンド連携予定)');
 
+            // APIに送信する直前の addModalForm の内容をログ出力
+            console.log('DEBUG: addService sending form data:', JSON.parse(JSON.stringify(this.addModalForm)));
+
             this.isLoading = true; // ロード開始
+            this.loadingMessage = 'サービスを登録中...'; // ロードメッセージを更新
+
             try {
-                // TODO: APIエンドポイントURLを修正
-                const response = await fetch('/api/services', { // 例: /api/services にPOST
-                    method: 'POST',
+                // バックエンドAPIへのPOSTリクエストを実装
+                const response = await fetch('/api/services', { // バックエンドで定義したAPIエンドポイント
+                    method: 'POST', // 新規登録なのでPOSTメソッド
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': getCsrfToken() // CSRFトークンをヘッダーに含める
+                        'Content-Type': 'application/json', // リクエストボディの形式を指定
+                        'Accept': 'application/json', // レスポンスとしてJSONを期待
+                        'X-CSRF-TOKEN': getCsrfToken() // CSRFトークンをヘッダーに含める（LaravelのAPIでは通常不要な場合がありますが、セキュリティのため含めておくと安全です）
                         // TODO: API認証が必要な場合は、Authorizationヘッダーなどを追加
                     },
-                    body: JSON.stringify(this.addModalForm) // 登録するサービスデータをJSON形式で送信
+                    // this.addModalForm にはフォームの入力値がバインドされています
+                    // これをJSON文字列に変換してリクエストボディとして送信します
+                    body: JSON.stringify({
+                        name: this.addModalForm.name,
+                        type: this.addModalForm.type,
+                        notification_date: this.addModalForm.notification_date, // ★修正: APIキー名に合わせる★
+                        notificationTiming: parseInt(this.addModalForm.notificationTiming, 10), // 数値に変換
+                        memo: this.addModalForm.memo,
+                        // カテゴリアイコンは現在フォームにないので、ここでは送信しないか、固定値を送る
+                        // category_icon: 'fas fa-question-circle', // 例: 固定値を送る場合
+                    })
                 });
 
+                // レスポンスのステータスコードをチェック
                 if (!response.ok) {
+                    // エラーレスポンスの場合
                     const error = await response.json();
                     console.error('Failed to add service:', error);
+
                     // バックエンドからのバリデーションエラーメッセージがあれば表示
                     if (response.status === 422 && error.errors) {
                         // Laravel のバリデーションエラー形式を想定
@@ -585,14 +603,16 @@ function serviceListPage() {
                     }
                 }
 
-                const newService = await response.json();
-                console.log('新しいサービスを正常に登録しました', newService);
+                // 成功レスポンスの場合
+                const result = await response.json();
+                console.log('新しいサービスを正常に登録しました', result);
 
-                // 登録成功後、再度サービス一覧を取得して表示を更新
-                await this.fetchServices(); // サービスの再取得
-
-                this.closeModals(); // 処理完了後に閉じる
-
+                // 登録成功後:
+                // 1. サービス一覧を更新するために再度 API を呼び出す
+                await this.fetchServices();
+                // 2. 新規登録モーダルを閉じる
+                this.closeModals();
+                // 3. 成功したことを示すトースト通知を表示
                 this.toastMessage = '新しいサービスを追加しました！';
                 this.toastType = 'success';
                 this.showToast = true;
@@ -600,10 +620,12 @@ function serviceListPage() {
                     this.showToast = false;
                     this.toastMessage = '';
                     this.toastType = null;
-                }, 3000);
+                }, 3000); // 3秒後に非表示
 
             } catch (error) {
+                // エラー発生時:
                 console.error('サービスの登録中にエラーが発生しました:', error);
+                // エラーメッセージをトースト通知で表示
                 this.toastMessage = error.message || 'サービスの登録中にエラーが発生しました。';
                 this.toastType = 'error';
                 this.showToast = true;
@@ -611,9 +633,10 @@ function serviceListPage() {
                     this.showToast = false;
                     this.toastMessage = '';
                     this.toastType = null;
-                }, 5000);
+                }, 5000); // 5秒後に非表示
             } finally {
                 this.isLoading = false; // ロード終了
+                this.loadingMessage = 'データを読み込み中...'; // メッセージを元に戻すか、別の表示にする
             }
         },
 

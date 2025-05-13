@@ -160,14 +160,14 @@
                 <div class="py-3">種別</div>
                 {{-- Sortable header cells - Added py-3 and text-sm for icon --}}
                 <div class="cursor-pointer hover:bg-gray-200 flex items-center py-3"
-                     @click="sortServices('notificationDate')"
-                     :class="{ 'sorted-asc': sortBy === 'notificationDate' && sortDirection === 'asc', 'sorted-desc': sortBy === 'notificationDate' && sortDirection === 'desc' }">
+                     @click="sortServices('notification_date')"
+                     :class="{ 'sorted-asc': sortBy === 'notification_date' && sortDirection === 'asc', 'sorted-desc': sortBy === 'notification_date' && sortDirection === 'desc' }">
                     通知対象日 <i class="fas fa-sort ml-2 text-gray-400 text-sm"
-                                  x-show="sortBy !== 'notificationDate'"></i>
+                                  x-show="sortBy !== 'notification_date'"></i>
                     <i class="fas fa-sort-up ml-2 text-gray-600 text-sm"
-                       x-show="sortBy === 'notificationDate' && sortDirection === 'asc'"></i>
+                       x-show="sortBy === 'notification_date' && sortDirection === 'asc'"></i>
                     <i class="fas fa-sort-down ml-2 text-gray-600 text-sm"
-                       x-show="sortBy === 'notificationDate' && sortDirection === 'desc'"></i>
+                       x-show="sortBy === 'notification_date' && sortDirection === 'desc'"></i>
                 </div>
                 {{-- Non-sortable cells - Added py-3 for consistent height --}}
                 <div class="py-3">メモ</div>
@@ -333,15 +333,15 @@
                     {{-- @input と @blur でバリデーションメソッドを呼び出し --}}
                     <input type="date" id="notification-date"
                            class="w-full p-2 border rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
-                           :class="{ 'border-red-500': addModalForm.errors.notificationDate }" {{-- エラーがある場合は赤枠 --}}
+                           :class="{ 'border-red-500': addModalForm.errors.notification_date }" {{-- エラーがある場合は赤枠 --}}
                            required
-                           x-model="addModalForm.notificationDate"
-                           @input="validateField('notificationDate', $event.target.value, 'add')"
-                           @blur="validateField('notificationDate', $event.target.value, 'add')"
+                           x-model="addModalForm.notification_date"
+                           @input="validateField('notification_date', $event.target.value, 'add')"
+                           @blur="validateField('notification_date', $event.target.value, 'add')"
                     >
                     {{-- エラーメッセージを表示 --}}
-                    <p class="text-red-500 text-sm mt-1" x-text="addModalForm.errors.notificationDate"
-                       x-show="addModalForm.errors.notificationDate"></p>
+                    <p class="text-red-500 text-sm mt-1" x-text="addModalForm.errors.notification_date"
+                       x-show="addModalForm.errors.notification_date"></p>
                 </div>
                 <div class="mb-4">
                     <label for="notification-timing" class="block font-medium text-gray-900 mb-1">通知タイミング</label>
@@ -438,22 +438,22 @@
                         <div class="mb-4">
                             <label for="edit-notification-date"
                                    class="block font-medium text-gray-900 mb-1">通知対象日</label>
-                            {{-- x-model で editingService.notificationDate をバインド --}}
+                            {{-- x-model で editingService.notification_date をバインド --}}
                             {{-- @input と @blur でバリデーションメソッドを呼び出し --}}
                             <input type="date" id="edit-notification-date"
                                    class="w-full p-2 border rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
-                                   :class="{ 'border-red-500': editModalFormErrors.notificationDate }"
+                                   :class="{ 'border-red-500': editModalFormErrors.notification_date }"
                                    {{-- エラーがある場合は赤枠 --}}
-                                   x-model="editingService.notificationDate"
-                                   @input="validateField('notificationDate', editingService.notificationDate, 'edit')"
-                                   {{-- editingService.notificationDate を渡す --}}
-                                   @blur="validateField('notificationDate', editingService.notificationDate, 'edit')"
-                                   {{-- editingService.notificationDate を渡す --}}
+                                   x-model="editingService.notification_date"
+                                   @input="validateField('notification_date', editingService.notification_date, 'edit')"
+                                   {{-- editingService.notification_date を渡す --}}
+                                   @blur="validateField('notification_date', editingService.notification_date, 'edit')"
+                                   {{-- editingService.notification_date を渡す --}}
                                    required
                             >
                             {{-- エラーメッセージを表示 --}}
-                            <p class="text-red-500 text-sm mt-1" x-text="editModalFormErrors.notificationDate"
-                               x-show="editModalFormErrors.notificationDate"></p>
+                            <p class="text-red-500 text-sm mt-1" x-text="editModalFormErrors.notification_date"
+                               x-show="editModalFormErrors.notification_date"></p>
                         </div>
                         <div class="mb-4">
                             <label for="edit-notification-timing"
