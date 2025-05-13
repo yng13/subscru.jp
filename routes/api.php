@@ -10,14 +10,17 @@ use App\Http\Controllers\ServiceController;
 Route::get('/services', [ServiceController::class, 'index']);
 // サービス追加
 Route::post('/services', [ServiceController::class, 'store']);
+// サービス更新
+Route::put('/services/{service}', [ServiceController::class, 'update']);
+// サービス削除
+Route::delete('/services/{service}', [ServiceController::class, 'destroy']);
 
 // 認証済みのユーザーのみアクセス可能なAPIルートのグループ
+// TODO: 認証機能実装後に、上記の /services ルートもこのグループ内に移動する
 Route::middleware('auth:sanctum')->group(function () {
 
     // TODO: 今後追加するAPI
     // Route::get('/services/{service}', [ServiceController::class, 'show']); // サービス詳細取得
-    // Route::put('/services/{service}', [ServiceController::class, 'update']); // サービス更新
-    // Route::delete('/services/{service}', [ServiceController::class, 'destroy']); // サービス削除
 
     // 例: ログアウトAPI (SPAの場合)
     // Route::post('/logout', [AuthController::class, 'logout']);

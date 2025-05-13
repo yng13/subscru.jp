@@ -7,6 +7,7 @@ use App\Models\Service;
 // Service モデルが存在する場合
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class ServiceController extends Controller
 {
@@ -90,33 +91,87 @@ class ServiceController extends Controller
      */
     public function show(Service $service)
     {
-        // TODO: サービス詳細の取得処理
-        // 現状は仮のレスポンスを返すか、または空のままにしておきます
-        return response()->json($service); // 例: サービスオブジェクトを返す
+        // TODO: サービス詳細の取得処理 (必要であれば)
+        // 現状は Implicit Model Binding で取得したサービスオブジェクトを返す
+        // 認証実装後に、このサービスが認証ユーザーのものであるか確認が必要
+        return response()->json($service);
     }
 
     /**
      * Update the specified resource in storage.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param \App\Models\Service $service // Implicit Model Binding で渡される
+     * @return \Illuminate\Http\JsonResponse
      */
     public function update(Request $request, Service $service)
     {
-        // TODO: サービスの更新処理
-        // 現状は仮の成功レスポンスを返すか、または空のままにしておきます
-        return response()->json([
-            'message' => 'サービスを正常に更新しました（実装予定）。',
-            'service' => $service // 更新後のサービスデータを返すことも
+        // TODO: 認証ユーザーがこのサービスを所有しているか確認 (認証機能実装後に)
+        // if ($request->user()->id !== $service->user_id) {
+        //     return response()->json(['message' => 'Unauthorized'], 403);
+        // }
+
+        // ★追加: リクエストデータのバリデーション★
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'type' => ['required', Rule::in(['contract', 'trial'])], // 'contract' または 'trial' のいずれか
+            'notification_date' => 'required|date', // 有効な日付形式であること
+            'notificationTiming' => 'nullable|integer', // 任意項目で整数
+            'memo' => 'nullable|string|max:1000', // 任意項目で文字列、最大1000文字
+            'category_icon' => 'nullable|string|max:50', // category_icon も更新対象に含める場合
         ]);
+
+        // ★追加: サービスの更新★
+        try {
+            // $service->update() メソッドで更新
+            $service->update($validatedData);
+
+            // 更新後のサービスデータを返す
+            return response()->json([
+                'service' => $service, // 更新後のサービスデータを返す
+                'message' => 'サービスを正常に更新しました。',
+            ], 200); // ステータスコード200 (OK)
+
+        } catch (\Exception $e) {
+            // エラーレスポンスを返す
+            \Log::error('サービスの更新中にエラーが発生しました: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'サービスの更新に失敗しました。',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
      * Remove the specified resource from storage.
+     *
+     * @param \App\Models\Service $service // Implicit Model Binding で渡される
+     * @return \Illuminate\Http\JsonResponse
      */
     public function destroy(Service $service)
     {
-        // TODO: サービスの削除処理
-        // 現状は仮の成功レスポンスを返すか、または空のままにしておきます
-        return response()->json([
-            'message' => 'サービスを正常に削除しました（実装予定）。',
-        ]);
+        // TODO: 認証ユーザーがこのサービスを所有しているか確認 (認証機能実装後に)
+        // if ($request->user()->id !== $service->user_id) {
+        //     return response()->json(['message' => 'Unauthorized'], 403);
+        // }
+
+        // ★追加: サービスの削除★
+        try {
+            $service->delete();
+
+            // 成功レスポンスを返す (削除の場合、通常はコンテンツなしの 204 No Content を返すか、
+            // 成功メッセージと共に 200 OK を返します。ここでは 200 OK とメッセージの例を示します。)
+            return response()->json([
+                'message' => 'サービスを正常に削除しました。',
+            ], 200); // または 204 (No Content)
+
+        } catch (\Exception $e) {
+            // エラーレスポンスを返す
+            \Log::error('サービスの削除中にエラーが発生しました: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'サービスの削除に失敗しました。',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

@@ -408,6 +408,30 @@ function serviceListPage() {
             } else if (modalId === '#edit-modal') {
                 if (service) {
                     this.editingService = {...service}; // ディープコピーが必要な場合は修正
+                    // ★追加: notification_date を YYYY-MM-DD 形式に変換して上書き★
+                    if (this.editingService.notification_date) {
+                        const date = new Date(this.editingService.notification_date);
+                        // Dateオブジェクトが有効な場合のみフォーマット
+                        if (!isNaN(date.getTime())) {
+                            const year = date.getFullYear();
+                            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                            const day = date.getDate().toString().padStart(2, '0');
+                            this.editingService.notification_date = `${year}-${month}-${day}`;
+                            console.log('DEBUG: Formatted notification_date for edit modal:', this.editingService.notification_date); // 確認用ログ
+                        } else {
+                            console.error('Invalid date string received for editingService.notification_date:', this.editingService.notification_date);
+                            // 不正な日付の場合は空文字列など、適切な初期値を設定することも検討
+                            this.editingService.notification_date = ''; // エラーの場合は空にする例
+                        }
+                    } else {
+                        // notification_date が null や undefined の場合の処理
+                        this.editingService.notification_date = ''; // 空にする例
+                    }
+
+                    // ★追加: editingService がセットされた直後のログ★
+                    console.log('DEBUG: editingService set:', JSON.parse(JSON.stringify(this.editingService)));
+                    console.log('DEBUG: editingService.notification_date:', this.editingService.notification_date, typeof this.editingService.notification_date);
+
                     this.resetEditFormErrors(); // 編集モーダルを開く前にエラーをリセット
                     this.showEditModal = true;
                     console.log('編集モーダルを開きます', this.editingService);
@@ -489,33 +513,56 @@ function serviceListPage() {
 
             this.isLoading = true; // ロード開始
             try {
-                // TODO: APIエンドポイントURLとメソッドを修正
-                // 更新なので PUT または PATCH メソッドを使用するのが一般的
-                const response = await fetch(`/api/services/${this.editingService.id}`, { // 例: /api/services/1 のようにidを含める
-                    method: 'PUT', // または 'PATCH'
+                // ★修正: バックエンドAPIへのPUTリクエストを実装★
+                // 更新対象のサービスのIDをURLに含めます
+                const response = await fetch(`/api/services/${this.editingService.id}`, {
+                    method: 'PUT', // 更新なのでPUTメソッド (バックエンドに合わせてください)
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': getCsrfToken() // CSRFトークンをヘッダーに含める
+                        'Content-Type': 'application/json', // リクエストボディの形式を指定
+                        'Accept': 'application/json', // レスポンスとしてJSONを期待
+                        'X-CSRF-TOKEN': getCsrfToken() // CSRFトークンを含める
                         // TODO: API認証が必要な場合は、Authorizationヘッダーなどを追加
                     },
-                    body: JSON.stringify(this.editingService) // 更新するサービスデータをJSON形式で送信
+                    // editingService にはフォームの入力値がバインドされています
+                    // これをJSON文字列に変換してリクエストボディとして送信します
+                    body: JSON.stringify({
+                        // 必須項目と更新可能な項目を含める
+                        name: this.editingService.name,
+                        type: this.editingService.type,
+                        notification_date: this.editingService.notification_date, // YYYY-MM-DD 形式になっているはず
+                        notificationTiming: parseInt(this.editingService.notificationTiming, 10), // 数値に変換
+                        memo: this.editingService.memo,
+                        // category_icon など、更新可能な他の項目も必要に応じて追加
+                        category_icon: this.editingService.category_icon, // 例: category_icon も更新対象の場合
+                    })
                 });
 
+                // レスポンスのステータスコードをチェック
                 if (!response.ok) {
+                    // エラーレスポンスの場合
                     const error = await response.json();
                     console.error('Failed to save service:', error);
-                    throw new Error(error.message || 'サービスの保存に失敗しました。');
+
+                    // バックエンドからのバリデーションエラーがあれば表示
+                    if (response.status === 422 && error.errors) {
+                        // Laravel のバリデーションエラー形式を想定
+                        const fieldErrors = Object.values(error.errors).flat().join(' ');
+                        throw new Error('保存内容に不備があります: ' + fieldErrors);
+                    } else {
+                        throw new Error(error.message || 'サービスの保存に失敗しました。');
+                    }
                 }
 
+                // 成功レスポンスの場合
                 const result = await response.json();
                 console.log('サービスを正常に保存しました', result);
 
-                // 保存成功後、再度サービス一覧を取得して表示を更新
-                await this.fetchServices(); // サービスの再取得
-
-                this.closeModals(); // 処理完了後に閉じる
-
+                // 保存成功後:
+                // 1. サービス一覧を更新するために再度 API を呼び出す
+                await this.fetchServices();
+                // 2. 編集モーダルを閉じる
+                this.closeModals();
+                // 3. 成功したことを示すトースト通知を表示
                 this.toastMessage = 'サービスを保存しました！';
                 this.toastType = 'success';
                 this.showToast = true;
@@ -523,10 +570,12 @@ function serviceListPage() {
                     this.showToast = false;
                     this.toastMessage = '';
                     this.toastType = null;
-                }, 3000);
+                }, 3000); // 3秒後に非表示
 
             } catch (error) {
+                // エラー発生時:
                 console.error('サービスの保存中にエラーが発生しました:', error);
+                // エラーメッセージをトースト通知で表示
                 this.toastMessage = error.message || 'サービスの保存中にエラーが発生しました。';
                 this.toastType = 'error';
                 this.showToast = true;
@@ -534,9 +583,10 @@ function serviceListPage() {
                     this.showToast = false;
                     this.toastMessage = '';
                     this.toastType = null;
-                }, 5000);
+                }, 5000); // 5秒後に非表示
             } finally {
                 this.isLoading = false; // ロード終了
+                this.loadingMessage = 'データを読み込み中...'; // メッセージを元に戻すか、別の表示にする
             }
         },
 
