@@ -95,20 +95,20 @@ function serviceListPage() {
         ],
 
         // ソートの状態
-        sortBy: 'notificationDate', // 初期ソートキー
+        sortBy: 'notification_date', // 初期ソートキー
         sortDirection: 'asc', // 'asc' or 'desc'
 
         // サービス登録モーダルのフォーム状態とバリデーションエラー
         addModalForm: {
             name: '',
             type: '', // ラジオボタンは初期値 null または '' が良い
-            notificationDate: '',
+            notification_date: '',
             notificationTiming: '0', // select の初期値
             memo: '',
             errors: {
                 name: '',
                 type: '',
-                notificationDate: ''
+                notification_date: ''
             },
             isValid: false // フォーム全体の有効性
         },
@@ -118,7 +118,7 @@ function serviceListPage() {
         editModalFormErrors: {
             name: '',
             type: '',
-            notificationDate: ''
+            notification_date: ''
         },
 
         // データのロード状態
@@ -216,7 +216,7 @@ function serviceListPage() {
             if (formType === 'add') {
                 this.addModalForm.isValid = this.addModalForm.errors.name === '' &&
                     this.addModalForm.errors.type === '' &&
-                    this.addModalForm.errors.notificationDate === '';
+                    this.addModalForm.errors.notification_date === '';
             }
             // 編集モーダルのisValidは今回は使用しないが、必要に応じて同様に定義
         },
@@ -225,7 +225,7 @@ function serviceListPage() {
         validateAddForm() {
             this.validateField('name', this.addModalForm.name, 'add');
             this.validateField('type', this.addModalForm.type, 'add');
-            this.validateField('notificationDate', this.addModalForm.notificationDate, 'add');
+            this.validateField('notificationDate', this.addModalForm.notification_date, 'add');
 
             // フォーム全体の有効性を返す
             return this.addModalForm.isValid;
@@ -238,12 +238,12 @@ function serviceListPage() {
 
             this.validateField('name', this.editingService.name, 'edit');
             this.validateField('type', this.editingService.type, 'edit');
-            this.validateField('notificationDate', this.editingService.notificationDate, 'edit');
+            this.validateField('notificationDate', this.editingService.notification_date, 'edit');
 
             // フォーム全体の有効性を計算して返す (プロパティとしては持たないが、関数で計算)
             return this.editModalFormErrors.name === '' &&
                 this.editModalFormErrors.type === '' &&
-                this.editModalFormErrors.notificationDate === '';
+                this.editModalFormErrors.notification_date === '';
         },
 
         // フォームの状態をリセットする関数 (新規登録用)
@@ -251,13 +251,13 @@ function serviceListPage() {
             console.log('新規登録フォームをリセット');
             this.addModalForm.name = '';
             this.addModalForm.type = '';
-            this.addModalForm.notificationDate = '';
+            this.addModalForm.notification_date = '';
             this.addModalForm.notificationTiming = '0';
             this.addModalForm.memo = '';
             // エラーメッセージもクリア
             this.addModalForm.errors.name = '';
             this.addModalForm.errors.type = '';
-            this.addModalForm.errors.notificationDate = '';
+            this.addModalForm.errors.notification_date = '';
             this.addModalForm.isValid = false;
         },
 
@@ -266,11 +266,13 @@ function serviceListPage() {
             console.log('編集フォームのエラーをリセット');
             this.editModalFormErrors.name = '';
             this.editModalFormErrors.type = '';
-            this.editModalFormErrors.notificationDate = '';
+            this.editModalFormErrors.notification_date = '';
         },
 
         // 通知対象日の残り日数を計算する関数
         getDaysRemaining(dateString) {
+            console.log('DEBUG: getDaysRemaining received:', dateString, typeof dateString);
+
             // null または undefined の場合のハンドリングを追加
             if (!dateString) {
                 //console.warn('getDaysRemaining called with null or undefined dateString');
@@ -300,6 +302,8 @@ function serviceListPage() {
 
         // 日付をYYYY/MM/DD 形式にフォーマットする関数
         formatDate(dateString) {
+            console.log('DEBUG: formatDate received:', dateString, typeof dateString);
+
             // null または undefined の場合のハンドリングを追加
             if (!dateString) {
                 return 'N/A';
@@ -331,7 +335,7 @@ function serviceListPage() {
                 let valueB = b[this.sortBy];
 
                 // 通知対象日の場合は日付として比較
-                if (this.sortBy === 'notificationDate') {
+                if (this.sortBy === 'notification_date') {
                     // 不正な日付の場合の比較を考慮
                     const dateA = new Date(valueA).getTime();
                     const dateB = new Date(valueB).getTime();

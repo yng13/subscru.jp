@@ -183,7 +183,7 @@
                     {{-- Call openModal method on click, passing service object --}}
                     <div
                         class="service-item bg-white rounded-lg shadow-sm hover:shadow-md p-4 md:p-0 md:rounded-none md:shadow-none md:border-b md:border-gray-200 cursor-pointer flex flex-col md:flex-row items-start md:items-center"
-                        :class="{ 'near-deadline': getDaysRemaining(service.notificationDate) <= 30 }"
+                        :class="{ 'near-deadline': getDaysRemaining(service.notification_date) <= 30 }"
                         @click="openModal('#edit-modal', service)"
                     >
                         <div class="mb-2 md:mb-0 md:py-4 md:px-6 whitespace-nowrap flex items-center">
@@ -201,8 +201,8 @@
                         {{-- PC: Stack date and days remaining --}}
                         <div class="mb-2 md:mb-0 md:py-4 md:px-6 notification-text flex flex-col items-start">
                             <span class="md:hidden font-semibold mr-2">通知対象日:</span>
-                            <span x-text="formatDate(service.notificationDate)"></span>
-                            <span x-text="'(あと ' + getDaysRemaining(service.notificationDate) + ' 日)'"></span>
+                            <span x-text="formatDate(service.notification_date)"></span>
+                            <span x-text="'(あと ' + getDaysRemaining(service.notification_date) + ' 日)'"></span>
                         </div>
                         <div class="md:py-4 md:px-6 break-words md:flex-1 w-full">
                             <span class="md:hidden font-semibold mr-2">メモ:</span>
