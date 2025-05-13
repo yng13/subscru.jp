@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Subscru - サービス一覧</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    {{-- CSRF Token for API requests --}}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     {{-- Vite CSS Asset --}}
     @vite(['resources/css/app.css'])
 </head>
@@ -133,7 +135,15 @@
             <h1 class="text-2xl font-semibold text-gray-900 mb-6">サービス一覧</h1>
 
             {{-- Debug: Display service count --}}
-            <p x-text="'Services count: ' + services.length" class="mb-4 text-sm text-gray-600"></p>
+            {{-- ロード中は非表示 --}}
+            <p x-text="'Services count: ' + services.length" class="mb-4 text-sm text-gray-600"
+               x-show="!isLoading && services.length > 0"></p>
+
+            {{-- ロード中の表示 --}}
+            <div x-show="isLoading" class="text-center text-blue-600 text-lg font-semibold py-8">
+                <i class="fas fa-spinner fa-spin mr-2"></i> <span x-text="loadingMessage"></span>
+            </div>
+            {{-- ロード中とじタグ --}}
 
             <div
                 class="service-list-header hidden md:flex bg-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
@@ -165,7 +175,9 @@
 
 
             {{-- Loop through services array --}}
-            <div class="service-list grid grid-cols-1 gap-4 md:gap-0 md:flex md:flex-col divide-y divide-gray-200">
+            {{-- ロード中はリストを非表示 --}}
+            <div class="service-list grid grid-cols-1 gap-4 md:gap-0 md:flex md:flex-col divide-y divide-gray-200"
+                 x-show="!isLoading">
                 <template x-for="service in services" :key="service.id">
                     {{-- Bind class for near deadline --}}
                     {{-- Call openModal method on click, passing service object --}}
@@ -199,13 +211,15 @@
                     </div>
                 </template>
                 {{-- Message when services list is empty --}}
-                <div x-show="services.length === 0" class="p-4 text-center text-gray-500">
+                {{-- ロード中は非表示 --}}
+                <div x-show="!isLoading && services.length === 0" class="p-4 text-center text-gray-500">
                     サービスはまだ登録されていません。
                 </div>
             </div>
 
             {{-- Static pagination links for now --}}
-            <div class="pagination flex justify-center items-center mt-8">
+            {{-- ロード中は非表示 --}}
+            <div class="pagination flex justify-center items-center mt-8" x-show="!isLoading && services.length > 0">
                 <a href="#"
                    class="page-link px-4 py-2 mx-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-200">&laquo;
                     前へ</a>
@@ -251,7 +265,8 @@
 {{-- Close modals on overlay click --}}
 {{-- Top alignment and horizontal center --}}
 <div class="modal-overlay fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-40 items-start justify-center"
-     x-show="showAddModal || showEditModal || showGuideModal || showDeleteConfirmModal" {{-- ここに showDeleteConfirmModal が含まれているか確認 --}}
+     x-show="showAddModal || showEditModal || showGuideModal || showDeleteConfirmModal"
+     {{-- ここに showDeleteConfirmModal が含まれているか確認 --}}
      @click.self="closeModals()"
      x-transition:enter="transition ease-out duration-300"
      x-transition:enter-start="opacity-0"
@@ -268,11 +283,14 @@
     {{-- Show/hide based on state --}}
     {{-- Top margin and horizontal auto margin --}}
     {{-- max-h-screen を max-h-[90vh] に変更 --}}
-    <div id="add-modal" class="modal bg-white rounded-lg shadow-xl w-11/12 md:max-w-md flex flex-col max-h-[90vh] mt-16 mx-auto" x-show="showAddModal" @click.stop>
+    <div id="add-modal"
+         class="modal bg-white rounded-lg shadow-xl w-11/12 md:max-w-md flex flex-col max-h-[90vh] mt-16 mx-auto"
+         x-show="showAddModal" @click.stop>
         <div class="modal-header flex justify-between items-center p-4 border-b border-gray-200">
             <h2 class="text-lg font-semibold text-gray-900">新しいサービスを登録</h2>
             {{-- Close modal button --}}
-            <button class="modal-close text-gray-500 text-xl hover:text-gray-700 focus:outline-none" @click="closeModals()"><i class="fas fa-times"></i></button>
+            <button class="modal-close text-gray-500 text-xl hover:text-gray-700 focus:outline-none"
+                    @click="closeModals()"><i class="fas fa-times"></i></button>
         </div>
         {{-- overflow-y-auto を追加して内容をスクロール可能に --}}
         <div class="modal-body p-6 flex-grow overflow-y-auto">
@@ -291,19 +309,23 @@
                            @blur="validateField('name', $event.target.value, 'add')"
                     >
                     {{-- エラーメッセージを表示 --}}
-                    <p class="text-red-500 text-sm mt-1" x-text="addModalForm.errors.name" x-show="addModalForm.errors.name"></p>
+                    <p class="text-red-500 text-sm mt-1" x-text="addModalForm.errors.name"
+                       x-show="addModalForm.errors.name"></p>
                 </div>
                 <div class="mb-4">
                     <label class="block font-medium text-gray-900 mb-1">種別</label>
                     <div @change="validateField('type', addModalForm.type, 'add')"> {{-- 親要素で @change をリッスン --}}
                         {{-- x-model で addModalForm.type にバインド --}}
-                        <input type="radio" id="type-trial" name="service-type" value="trial" class="mr-1" x-model="addModalForm.type" required>
+                        <input type="radio" id="type-trial" name="service-type" value="trial" class="mr-1"
+                               x-model="addModalForm.type" required>
                         <label for="type-trial" class="mr-4 text-gray-700">トライアル中</label>
-                        <input type="radio" id="type-contract" name="service-type" value="contract" class="mr-1" x-model="addModalForm.type" required>
+                        <input type="radio" id="type-contract" name="service-type" value="contract" class="mr-1"
+                               x-model="addModalForm.type" required>
                         <label for="type-contract" class="text-gray-700">契約中</label>
                     </div>
                     {{-- エラーメッセージを表示 --}}
-                    <p class="text-red-500 text-sm mt-1" x-text="addModalForm.errors.type" x-show="addModalForm.errors.type"></p>
+                    <p class="text-red-500 text-sm mt-1" x-text="addModalForm.errors.type"
+                       x-show="addModalForm.errors.type"></p>
                 </div>
                 <div class="mb-4">
                     <label for="notification-date" class="block font-medium text-gray-900 mb-1">通知対象日</label>
@@ -318,11 +340,13 @@
                            @blur="validateField('notificationDate', $event.target.value, 'add')"
                     >
                     {{-- エラーメッセージを表示 --}}
-                    <p class="text-red-500 text-sm mt-1" x-text="addModalForm.errors.notificationDate" x-show="addModalForm.errors.notificationDate"></p>
+                    <p class="text-red-500 text-sm mt-1" x-text="addModalForm.errors.notificationDate"
+                       x-show="addModalForm.errors.notificationDate"></p>
                 </div>
                 <div class="mb-4">
                     <label for="notification-timing" class="block font-medium text-gray-900 mb-1">通知タイミング</label>
-                    <select id="notification-timing" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200">
+                    <select id="notification-timing"
+                            class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200">
                         <option value="0">当日</option>
                         <option value="1">1日前</option>
                         <option value="3">3日前</option>
@@ -332,15 +356,23 @@
                 </div>
                 <div class="mb-4">
                     <label for="memo" class="block font-medium text-gray-900 mb-1">メモ</label>
-                    <textarea id="memo" rows="4" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200" placeholder="例: 年払い契約、次回更新時に解約を検討..."></textarea>
+                    <textarea id="memo" rows="4"
+                              class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
+                              placeholder="例: 年払い契約、次回更新時に解約を検討..."></textarea>
                 </div>
             </form>
         </div>
         <div class="modal-footer flex flex-col-reverse md:flex-row md:justify-end gap-3 p-4 border-t border-gray-200">
             {{-- Cancel button calls closeModals method --}}
-            <button class="button-secondary bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded hover:bg-gray-400 focus:outline-none modal-close w-full md:w-auto" @click="closeModals()">キャンセル</button>
+            <button
+                class="button-secondary bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded hover:bg-gray-400 focus:outline-none modal-close w-full md:w-auto"
+                @click="closeModals()">キャンセル
+            </button>
             {{-- !!!今回の修正点!!! type="button" に変更し、クリックでフォームを送信してaddServiceを呼び出す --}}
-            <button class="button-primary bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 focus:outline-none w-full md:w-auto" type="button" @click="addService()">登録する</button> {{-- Changed type and added @click --}}
+            <button
+                class="button-primary bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 focus:outline-none w-full md:w-auto"
+                type="button" @click="addService()">登録する
+            </button> {{-- Changed type and added @click --}}
         </div>
     </div>
 
@@ -348,13 +380,17 @@
     {{-- Show/hide based on state --}}
     {{-- Top margin and horizontal auto margin --}}
     {{-- max-h-screen を max-h-[90vh] に変更 --}}
-    <div id="edit-modal" class="modal bg-white rounded-lg shadow-xl w-11/12 md:max-w-md flex flex-col max-h-[90vh] mt-16 mx-auto" x-show="showEditModal" @click.stop>
+    <div id="edit-modal"
+         class="modal bg-white rounded-lg shadow-xl w-11/12 md:max-w-md flex flex-col max-h-[90vh] mt-16 mx-auto"
+         x-show="showEditModal" @click.stop>
         <div class="modal-header flex justify-between items-center p-4 border-b border-gray-200">
             {{-- Modal title bound to service name --}}
             {{-- editingService が null の場合は「サービス名」と表示 --}}
-            <h2 id="edit-modal-title" class="text-lg font-semibold text-gray-900" x-text="editingService ? editingService.name : 'サービス名'"></h2>
+            <h2 id="edit-modal-title" class="text-lg font-semibold text-gray-900"
+                x-text="editingService ? editingService.name : 'サービス名'"></h2>
             {{-- Close modal button --}}
-            <button class="modal-close text-gray-500 text-xl hover:text-gray-700 focus:outline-none" @click="closeModals()"><i class="fas fa-times"></i></button>
+            <button class="modal-close text-gray-500 text-xl hover:text-gray-700 focus:outline-none"
+                    @click="closeModals()"><i class="fas fa-times"></i></button>
         </div>
         {{-- editingService が null でない場合のみモーダルボディとフッターを表示 --}}
         {{-- template x-if は単一の要素しか囲めないため、wrapper div を追加 --}}
@@ -365,51 +401,67 @@
                 <div class="modal-body p-6 flex-grow overflow-y-auto">
                     <form> {{-- Removed @submit.prevent --}}
                         <div class="mb-4">
-                            <label for="edit-service-name" class="block font-medium text-gray-900 mb-1">サービス名</label>
+                            <label for="edit-service-name"
+                                   class="block font-medium text-gray-900 mb-1">サービス名</label>
                             {{-- x-model で editingService.name をバインド --}}
                             {{-- @input と @blur でバリデーションメソッドを呼び出し --}}
                             <input type="text" id="edit-service-name"
                                    class="w-full p-2 border rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
                                    :class="{ 'border-red-500': editModalFormErrors.name }" {{-- エラーがある場合は赤枠 --}}
                                    x-model="editingService.name"
-                                   @input="validateField('name', editingService.name, 'edit')" {{-- editingService.name を渡す --}}
-                                   @blur="validateField('name', editingService.name, 'edit')" {{-- editingService.name を渡す --}}
+                                   @input="validateField('name', editingService.name, 'edit')"
+                                   {{-- editingService.name を渡す --}}
+                                   @blur="validateField('name', editingService.name, 'edit')"
+                                   {{-- editingService.name を渡す --}}
                                    required
                             >
                             {{-- エラーメッセージを表示 --}}
-                            <p class="text-red-500 text-sm mt-1" x-text="editModalFormErrors.name" x-show="editModalFormErrors.name"></p>
+                            <p class="text-red-500 text-sm mt-1" x-text="editModalFormErrors.name"
+                               x-show="editModalFormErrors.name"></p>
                         </div>
                         <div class="mb-4">
                             <label class="block font-medium text-gray-900 mb-1">種別</label>
-                            <div @change="validateField('type', editingService.type, 'edit')"> {{-- 親要素で @change をリッスン --}}
+                            <div
+                                @change="validateField('type', editingService.type, 'edit')"> {{-- 親要素で @change をリッスン --}}
                                 {{-- x-model で editingService.type にバインド --}}
-                                <input type="radio" id="edit-type-trial" name="edit-service-type" value="trial" class="mr-1" x-model="editingService.type">
+                                <input type="radio" id="edit-type-trial" name="edit-service-type" value="trial"
+                                       class="mr-1" x-model="editingService.type">
                                 <label for="edit-type-trial" class="mr-4 text-gray-700">トライアル中</label>
-                                <input type="radio" id="edit-type-contract" name="edit-service-type" value="contract" class="mr-1" x-model="editingService.type">
+                                <input type="radio" id="edit-type-contract" name="edit-service-type" value="contract"
+                                       class="mr-1" x-model="editingService.type">
                                 <label for="edit-type-contract" class="text-gray-700">契約中</label>
                             </div>
                             {{-- エラーメッセージを表示 --}}
-                            <p class="text-red-500 text-sm mt-1" x-text="editModalFormErrors.type" x-show="editModalFormErrors.type"></p>
+                            <p class="text-red-500 text-sm mt-1" x-text="editModalFormErrors.type"
+                               x-show="editModalFormErrors.type"></p>
                         </div>
                         <div class="mb-4">
-                            <label for="edit-notification-date" class="block font-medium text-gray-900 mb-1">通知対象日</label>
+                            <label for="edit-notification-date"
+                                   class="block font-medium text-gray-900 mb-1">通知対象日</label>
                             {{-- x-model で editingService.notificationDate をバインド --}}
                             {{-- @input と @blur でバリデーションメソッドを呼び出し --}}
                             <input type="date" id="edit-notification-date"
                                    class="w-full p-2 border rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
-                                   :class="{ 'border-red-500': editModalFormErrors.notificationDate }" {{-- エラーがある場合は赤枠 --}}
+                                   :class="{ 'border-red-500': editModalFormErrors.notificationDate }"
+                                   {{-- エラーがある場合は赤枠 --}}
                                    x-model="editingService.notificationDate"
-                                   @input="validateField('notificationDate', editingService.notificationDate, 'edit')" {{-- editingService.notificationDate を渡す --}}
-                                   @blur="validateField('notificationDate', editingService.notificationDate, 'edit')" {{-- editingService.notificationDate を渡す --}}
+                                   @input="validateField('notificationDate', editingService.notificationDate, 'edit')"
+                                   {{-- editingService.notificationDate を渡す --}}
+                                   @blur="validateField('notificationDate', editingService.notificationDate, 'edit')"
+                                   {{-- editingService.notificationDate を渡す --}}
                                    required
                             >
                             {{-- エラーメッセージを表示 --}}
-                            <p class="text-red-500 text-sm mt-1" x-text="editModalFormErrors.notificationDate" x-show="editModalFormErrors.notificationDate"></p>
+                            <p class="text-red-500 text-sm mt-1" x-text="editModalFormErrors.notificationDate"
+                               x-show="editModalFormErrors.notificationDate"></p>
                         </div>
                         <div class="mb-4">
-                            <label for="edit-notification-timing" class="block font-medium text-gray-900 mb-1">通知タイミング</label>
+                            <label for="edit-notification-timing"
+                                   class="block font-medium text-gray-900 mb-1">通知タイミング</label>
                             {{-- Bind select value to editingService data --}}
-                            <select id="edit-notification-timing" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200" x-model="editingService.notificationTiming">
+                            <select id="edit-notification-timing"
+                                    class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
+                                    x-model="editingService.notificationTiming">
                                 <option value="0">当日</option>
                                 <option value="1">1日前</option>
                                 <option value="3">3日前</option>
@@ -420,17 +472,30 @@
                         <div class="mb-4">
                             <label for="edit-memo" class="block font-medium text-gray-900 mb-1">メモ</label>
                             {{-- Bind textarea value to editingService data --}}
-                            <textarea id="edit-memo" rows="4" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200" x-model="editingService.memo" placeholder="例: 年払い契約、次回更新時に解約を検討..."></textarea>
+                            <textarea id="edit-memo" rows="4"
+                                      class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
+                                      x-model="editingService.memo"
+                                      placeholder="例: 年払い契約、次回更新時に解約を検討..."></textarea>
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer flex flex-col-reverse md:flex-row md:justify-end gap-3 p-4 border-t border-gray-200">
+                <div
+                    class="modal-footer flex flex-col-reverse md:flex-row md:justify-end gap-3 p-4 border-t border-gray-200">
                     {{-- Delete button calls deleteService method --}}
-                    <button class="button-danger bg-red-500 text-white font-bold py-2 px-4 rounded hover:bg-red-600 focus:outline-none order-last md:order-first w-full md:w-auto" @click.stop="openDeleteConfirmModal(editingService)">削除する</button>
+                    <button
+                        class="button-danger bg-red-500 text-white font-bold py-2 px-4 rounded hover:bg-red-600 focus:outline-none order-last md:order-first w-full md:w-auto"
+                        @click.stop="openDeleteConfirmModal(editingService)">削除する
+                    </button>
                     {{-- Cancel button calls closeModals method --}}
-                    <button class="button-secondary bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded hover:bg-gray-400 focus:outline-none modal-close w-full md:w-auto" @click="closeModals()">キャンセル</button>
+                    <button
+                        class="button-secondary bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded hover:bg-gray-400 focus:outline-none modal-close w-full md:w-auto"
+                        @click="closeModals()">キャンセル
+                    </button>
                     {{-- !!!今回の修正点!!! type="button" に変更し、クリックでフォームを送信してsaveServiceを呼び出す --}}
-                    <button class="button-primary bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 focus:outline-none w-full md:w-auto" type="button" @click="saveService()">保存する</button> {{-- Changed type and added @click --}}
+                    <button
+                        class="button-primary bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 focus:outline-none w-full md:w-auto"
+                        type="button" @click="saveService()">保存する
+                    </button> {{-- Changed type and added @click --}}
                 </div>
             </div> {{-- wrapper div の閉じタグ --}}
         </template> {{-- template x-if の閉じタグ --}}
@@ -462,10 +527,16 @@
         </div>
         <div class="modal-footer flex flex-col-reverse md:flex-row md:justify-end gap-3 p-4 border-t border-gray-200">
             {{-- Cancel button calls cancelDelete method --}}
-            <button class="button-secondary bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded hover:bg-gray-400 focus:outline-none w-full md:w-auto" @click="cancelDelete()">キャンセル</button>
+            <button
+                class="button-secondary bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded hover:bg-gray-400 focus:outline-none w-full md:w-auto"
+                @click="cancelDelete()">キャンセル
+            </button>
             {{-- Delete button calls deleteService method --}}
             {{-- 削除処理は serviceToDelete のデータを使って行います --}}
-            <button class="button-danger bg-red-500 text-white font-bold py-2 px-4 rounded hover:bg-red-600 focus:outline-none w-full md:w-auto" @click="deleteService()">削除する</button>
+            <button
+                class="button-danger bg-red-500 text-white font-bold py-2 px-4 rounded hover:bg-red-600 focus:outline-none w-full md:w-auto"
+                @click="deleteService()">削除する
+            </button>
         </div>
     </div> {{-- 削除ダイアログの閉じタグ --}}
 
