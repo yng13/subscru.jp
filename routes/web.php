@@ -4,13 +4,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // ServiceController が存在する場合
+use App\Http\Controllers\IcalFeedController;
 use App\Http\Controllers\ServiceController;
 
 Route::middleware('web')->group(function () {
 
     Route::get('/', function () {
         return view('index');
-    });
+    })->middleware('auth');
 
     Route::prefix('api')->group(function () {
         // 認証済みのユーザーのみアクセス可能なAPIルートのグループ
@@ -36,4 +37,11 @@ Route::middleware('web')->group(function () {
             });
         });
     });
+
+    // --- iCalフィード用のルートを追加 ---
+    // ユニークなトークンを含むURLで、認証なしでアクセスできるようにします。
+    // トークン自体がユーザーを識別し、不正なアクセスを防ぎます。
+    Route::get('/feed/ical/{token}.ics', [IcalFeedController::class, 'show'])
+        ->name('ical.feed');
+    // ---------------------------------
 });

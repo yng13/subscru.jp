@@ -55,7 +55,7 @@ function serviceListPage() {
         showAddModal: false,
         showEditModal: false,
         showGuideModal: false,
-        // !!! 今回の追加 !!! 削除確認モーダルの状態と削除対象サービス
+        // 削除確認モーダルの状態と削除対象サービス
         showDeleteConfirmModal: false,
         serviceToDelete: null, // 削除対象のサービスデータを保持
         editingService: null, // 編集対象のサービスデータを保持
@@ -175,7 +175,7 @@ function serviceListPage() {
                     throw new Error(error.message || `サービスの取得に失敗しました (${response.status})。`); // ステータスコードを含めると分かりやすい
                 }
 
-                // 修正: 共通のエラーハンドリング関数を使用
+                // 共通のエラーハンドリング関数を使用
                 const handledResponse = await handleApiResponse(response);
 
                 // JSON形式でレスポンスボディを取得
@@ -203,6 +203,49 @@ function serviceListPage() {
                 }, 5000);
             } finally {
                 this.isLoading = false; // ロード終了
+            }
+        },
+
+        // 認証済みユーザーの情報を取得するメソッド
+        async fetchAuthenticatedUser() {
+            try {
+                // Fortify/Sanctum の認証済みユーザー情報エンドポイントにリクエスト
+                const response = await fetch('/api/user', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': getCsrfToken() // Sanctum stateful 認証には CSRF トークンが必要です
+                    }
+                });
+
+                const handledResponse = await handleApiResponse(response);
+
+                const user = await handledResponse.json(); // ユーザー情報を取得
+
+                // ユーザー情報からical_tokenを取得し、保存
+                if (user && user.ical_token) {
+                    this.userIcalToken = user.ical_token;
+                    // iCalフィードURLを生成
+                    // Laravel のルート名 'ical.feed' を使ってURLを生成 (バックエンドで生成する方が安全)
+                    // ここでは一旦フロントエンドで組み立てますが、後で修正推奨
+                    // TODO: バックエンドで安全にURLを生成してフロントエンドに渡すように修正
+                    // 例: /feed/ical/ユーザーのトークン.ics
+                    const baseUrl = window.location.origin; // 現在のサイトのオリジンを取得
+                    this.userIcalUrl = `webcal://${baseUrl.replace(/^https?:\/\//, '')}/feed/ical/${this.userIcalToken}.ics`; // webcalスキームを使用
+                    console.log('iCal URL:', this.userIcalUrl);
+                } else {
+                    console.warn('Authenticated user or iCal token not found.');
+                    // トークンがない場合の表示をクリア
+                    this.userIcalToken = '';
+                    this.userIcalUrl = 'ログインすると表示されます。';
+                }
+
+            } catch (error) {
+                console.error('認証ユーザーの取得中にエラーが発生しました:', error);
+                // エラー時もトークンとURLをクリア
+                this.userIcalToken = '';
+                this.userIcalUrl = 'エラーにより取得できませんでした。';
+                // 認証エラーはhandleApiResponseでリダイレクトされるため、ここではトーストは不要かもしれません
             }
         },
 
@@ -434,7 +477,7 @@ function serviceListPage() {
             } else if (modalId === '#edit-modal') {
                 if (service) {
                     this.editingService = {...service}; // ディープコピーが必要な場合は修正
-                    // 追加: notification_date を YYYY-MM-DD 形式に変換して上書き
+                    // notification_date を YYYY-MM-DD 形式に変換して上書き
                     if (this.editingService.notification_date) {
                         const date = new Date(this.editingService.notification_date);
                         // Dateオブジェクトが有効な場合のみフォーマット
@@ -454,7 +497,7 @@ function serviceListPage() {
                         this.editingService.notification_date = ''; // 空にする例
                     }
 
-                    // 追加: editingService がセットされた直後のログ
+                    // editingService がセットされた直後のログ
                     console.log('DEBUG: editingService set:', JSON.parse(JSON.stringify(this.editingService)));
                     console.log('DEBUG: editingService.notification_date:', this.editingService.notification_date, typeof this.editingService.notification_date);
 
@@ -492,7 +535,7 @@ function serviceListPage() {
             // TODO: モーダルを閉じた後にフォームをリセットする処理などもここに追加
         },
 
-        // !!! 今回の追加 !!! 削除確認モーダルを開く関数
+        // 削除確認モーダルを開く関数
         openDeleteConfirmModal(service) {
             // 編集モーダルを閉じる（重要：編集モーダルが閉じないと、その下の要素へのクリックが伝播してしまいます）
             this.closeModals();
@@ -509,7 +552,7 @@ function serviceListPage() {
             }, 50); // 50ミリ秒の遅延（調整可能）
         },
 
-        // !!! 今回の追加 !!! 削除確認をキャンセルする関数
+        // 削除確認をキャンセルする関数
         cancelDelete() {
             // 削除確認モーダルを閉じる
             this.showDeleteConfirmModal = false;
@@ -539,7 +582,7 @@ function serviceListPage() {
 
             this.isLoading = true; // ロード開始
             try {
-                // 修正: バックエンドAPIへのPUTリクエストを実装
+                // バックエンドAPIへのPUTリクエストを実装
                 // 更新対象のサービスのIDをURLに含めます
                 const response = await fetch(`/api/services/${this.editingService.id}`, {
                     method: 'PUT', // 更新なのでPUTメソッド (バックエンドに合わせてください)
@@ -579,7 +622,7 @@ function serviceListPage() {
                     }
                 }
 
-                // 修正: 共通のエラーハンドリング関数を使用
+                // 共通のエラーハンドリング関数を使用
                 const handledResponse = await handleApiResponse(response);
 
                 // 成功レスポンスの場合
@@ -658,7 +701,7 @@ function serviceListPage() {
                     body: JSON.stringify({
                         name: this.addModalForm.name,
                         type: this.addModalForm.type,
-                        notification_date: this.addModalForm.notification_date, // 修正: APIキー名に合わせる
+                        notification_date: this.addModalForm.notification_date, // APIキー名に合わせる
                         notificationTiming: parseInt(this.addModalForm.notificationTiming, 10), // 数値に変換
                         memo: this.addModalForm.memo,
                         // カテゴリアイコンは現在フォームにないので、ここでは送信しないか、固定値を送る
@@ -758,7 +801,7 @@ function serviceListPage() {
                 // const result = await response.json();
                 console.log('サービスを正常に削除しました', this.serviceToDelete.id);
 
-                // 修正: 共通のエラーハンドリング関数を使用
+                // 共通のエラーハンドリング関数を使用
                 const handledResponse = await handleApiResponse(response);
 
                 // 削除成功後、再度サービス一覧を取得して表示を更新

@@ -14,7 +14,7 @@
 {{-- x-data now calls the function registered with Alpine.data in app.js --}}
 <body class="bg-gray-100 text-gray-700 font-sans leading-relaxed" x-data="serviceListPage()">
 
-{{-- ここから修正 ヘッダー部分を単一のHTMLにまとめる --}}
+{{-- ヘッダー部分を単一のHTMLにまとめる --}}
 {{-- fixed top-0 left-0 w-full bg-white shadow-md z-50 はPC/スマホ共通 --}}
 <header class="fixed top-0 left-0 w-full bg-white shadow-md z-50">
     <div class="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -73,7 +73,7 @@
 
     </div>
 </header>
-{{-- ここまで修正 --}}
+{{-- ここまで --}}
 
 <div class="drawer-overlay fixed inset-0 bg-black bg-opacity-50 z-40"
      x-show="isDrawerOpen"
@@ -100,7 +100,7 @@
                     class="fas fa-home mr-2"></i>ホーム</a></li>
         <li class="mt-auto mb-4"><a href="#" class="text-gray-700 hover:text-blue-500 font-medium flex items-center"><i
                     class="fas fa-cog mr-2"></i>設定</a></li>
-        {{-- !!!今回の修正点!!! ログアウトをボタンに変更 --}}
+        {{-- ログアウトをボタンに変更 --}}
         <li>
             {{-- ボタンとして実装し、クリックで隠しフォームを送信 --}}
             <button type="button"
@@ -120,7 +120,7 @@
                         class="fas fa-home mr-2"></i>ホーム</a></li>
             <li class="mt-auto"><a href="#" class="text-gray-700 hover:text-blue-500 font-medium flex items-center"><i
                         class="fas fa-cog mr-2"></i>設定</a></li>
-            {{-- !!!今回の修正点!!! ログアウトをボタンに変更 --}}
+            {{-- ログアウトをボタンに変更 --}}
             <li>
                 {{-- ボタンとして実装し、クリックで隠しフォームを送信 --}}
                 <button type="button"
@@ -144,10 +144,24 @@
                 <label class="font-medium block mb-2 text-gray-900">あなたのiCalフィードURL: </label>
                 <div
                     class="ical-url-display flex flex-wrap items-center bg-gray-100 border border-gray-300 rounded-md p-4 break-all">
-                    <span id="ical-url" class="flex-grow mr-4">webcal://subscru.example.com/feed/abcdef1234567890</span>
+                    {{-- スタティックなURLを、動的に生成されるユーザーごとのURLに変更 --}}
+                    {{-- ユーザーがログインしている場合のみURLを表示 --}}
+                    @auth
+                        {{-- userIcalUrl は Alpine.js の data プロパティから取得 --}}
+                        <span id="ical-url" class="flex-grow mr-4" x-text="userIcalUrl">webcal://subscru.example.com/feed/abcdef1234567890</span>
+                    @else
+                        {{-- 未ログインの場合はメッセージを表示 --}}
+                        <span class="flex-grow mr-4 text-gray-500">ログインすると表示されます。</span>
+                    @endauth
                     <button
                         class="copy-button bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded hover:bg-gray-400 focus:outline-none whitespace-nowrap mt-2 md:mt-0"
-                        @click="copyIcalUrl()">
+                        {{-- ログイン済みの場合のみボタンを有効化 --}}
+                        @auth
+                            @click="copyIcalUrl()"
+                        @else
+                            disabled {{-- 未ログインの場合は無効化 --}}
+                        @endauth
+                    >
                         <i class="fas fa-copy mr-2"></i>URLをコピー
                     </button>
                 </div>
@@ -227,7 +241,6 @@
                                   x-text="service.type === 'contract' ? '契約中' : 'トライアル中'"></span>
                         </div>
                         {{-- PC: Stack date and days remaining / スマホ: Horizontal --}}
-                        {{-- ★この部分を修正★ --}}
                         {{-- flex flex-col (PC/スマホ) -> flex flex-row (スマホ) md:flex-col (PC) に変更 --}}
                         {{-- items-center (PC/スマホ) -> items-start (スマホ) md:items-center (PC) に変更 --}}
                         <div class="mb-2 md:mb-0 md:py-4 md:px-6 notification-text flex flex-row items-center md:flex-col md:items-start"> {{-- flex-row items-center を追加, flex-col items-start を md: プレフィックス付きに変更 --}}
@@ -274,7 +287,6 @@
 
 {{-- Call openModal method --}}
 {{-- スマホ版FABボタンの形状とサイズを修正 --}}
-{{-- FAB: Floating Action Button. 画面右下に固定される主要アクションボタンのデザインパターンです。 --}}
 {{-- デフォルト (スマホ): w-14 h-14 で正円サイズ (例: 56px), p-0 でパディング解除、Flexbox でアイコンを中央寄せ --}}
 {{-- PC (md:): w-auto h-auto で内容に応じたサイズに、md:p-4 でパディングを追加、PCは正円ではなく丸角長方形 --}}
 <button id="add-service-fab"
@@ -327,7 +339,7 @@
         </div>
         {{-- overflow-y-auto を追加して内容をスクロール可能に --}}
         <div class="modal-body p-6 flex-grow overflow-y-auto">
-            {{-- !!!今回の修正点!!! @submit.prevent を削除。ボタンの @click でフォームを送信する。 --}}
+            {{-- @submit.prevent を削除。ボタンの @click でフォームを送信する。 --}}
             <form> {{-- Removed @submit.prevent --}}
                 <div class="mb-4">
                     <label for="service-name" class="block font-medium text-gray-900 mb-1">サービス名</label>
@@ -401,7 +413,7 @@
                 class="button-secondary bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded hover:bg-gray-400 focus:outline-none modal-close w-full md:w-auto"
                 @click="closeModals()">キャンセル
             </button>
-            {{-- !!!今回の修正点!!! type="button" に変更し、クリックでフォームを送信してaddServiceを呼び出す --}}
+            {{-- type="button" に変更し、クリックでフォームを送信してaddServiceを呼び出す --}}
             <button
                 class="button-primary bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 focus:outline-none w-full md:w-auto"
                 type="button" @click="addService()">登録する
@@ -430,7 +442,7 @@
         <template x-if="editingService">
             <div> {{-- x-if で条件付きレンダリングする wrapper div --}}
                 {{-- overflow-y-auto を追加して内容をスクロール可能に --}}
-                {{-- !!!今回の修正点!!! @submit.prevent を削除。ボタンの @click でフォームを送信する。 --}}
+                {{-- @submit.prevent を削除。ボタンの @click でフォームを送信する。 --}}
                 <div class="modal-body p-6 flex-grow overflow-y-auto">
                     <form> {{-- Removed @submit.prevent --}}
                         <div class="mb-4">
@@ -524,7 +536,7 @@
                         class="button-secondary bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded hover:bg-gray-400 focus:outline-none modal-close w-full md:w-auto"
                         @click="closeModals()">キャンセル
                     </button>
-                    {{-- !!!今回の修正点!!! type="button" に変更し、クリックでフォームを送信してsaveServiceを呼び出す --}}
+                    {{-- type="button" に変更し、クリックでフォームを送信してsaveServiceを呼び出す --}}
                     <button
                         class="button-primary bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 focus:outline-none w-full md:w-auto"
                         type="button" @click="saveService()">保存する
@@ -624,7 +636,7 @@
 
 </div>
 
-{{-- !!!今回の追加要素!!! ログアウトのための隠しフォーム --}}
+{{-- ログアウトのための隠しフォーム --}}
 <form id="logout-form" action="/logout" method="POST" style="display: none;">
     @csrf {{-- Laravel の CSRF 保護のためのトークン --}}
 </form>
@@ -632,7 +644,7 @@
 {{-- Vite JS Asset --}}
 @vite(['resources/js/app.js'])
 
-{{-- !!!今回の修正要素!!! トースト通知メッセージの表示エリア (中央上部に表示, 色分け対応) --}}
+{{-- トースト通知メッセージの表示エリア (中央上部に表示, 色分け対応) --}}
 {{-- fixed で画面に固定 --}}
 {{-- inset-x-0 で水平方向いっぱいに広げ、mx-auto で中央寄せ --}}
 {{-- top-4 で画面上端から4単位離す（位置は調整可能） --}}

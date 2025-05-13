@@ -77,7 +77,7 @@ nav button.flex {
     /* 横方向の配置は Flex コンテナの justify-content や HTML のマージンクラスで行います */
 }
 
-/* !!!今回の修正点!!! Logout ボタンの hover および focus スタイル */
+/* Logout ボタンの hover および focus スタイル */
 /* @apply を使用して Tailwind ユーティリティを適用 (ビルドプロセスで解釈される) */
 nav button:hover {
     @apply text-blue-500; /* hover 時のテキスト色を青に */
@@ -103,7 +103,7 @@ nav button:focus-visible {
     /* transform: none !important; */
     /* } */
 
-    /* !!!今回の修正点!!! PC版モーダルの最大高さを調整 */
+    /* PC版モーダルの最大高さを調整 */
     /* モーダル全体の最大高さを、ビューポートの高さからトップマージン (mt-16 = 4rem) を引いた値に設定 */
     /* これにより、モーダル全体が画面内に収まりやすくなります */
     .modal {

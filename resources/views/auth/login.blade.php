@@ -12,7 +12,6 @@
 
 <div class="container mx-auto px-4">
     <div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg">
-        {{-- タイトル部分を修正 --}}
         <div class="text-center mb-6">
             {{-- index.blade.php のロゴスタイルを適用 --}}
             <div class="site-logo text-xl md:text-2xl font-bold text-blue-500 inline-block">Subscru</div>

@@ -19,7 +19,7 @@ class ServiceController extends Controller
      */
     public function index(Request $request)
     {
-        // 修正: 認証済みのユーザーに紐づくサービスのみを取得
+        // 認証済みのユーザーに紐づくサービスのみを取得
         // Auth::user() で認証済みのユーザーモデルを取得し、その services リレーションを使用
         $services = Auth::user()->services()->get();
 
@@ -103,7 +103,7 @@ class ServiceController extends Controller
      */
     public function update(Request $request, Service $service)
     {
-        // 追加: 認証ユーザーがこのサービスを所有しているか確認
+        // 認証ユーザーがこのサービスを所有しているか確認
         // Implicit Model Binding で取得したサービスが認証ユーザーのものであることを確認
         if ($request->user()->id !== $service->user_id) {
             // ログ出力して不正アクセスを記録
@@ -115,7 +115,7 @@ class ServiceController extends Controller
             return response()->json(['message' => 'このサービスへのアクセス権限がありません。'], 403); // 403 Forbidden レスポンス
         }
 
-        // 追加: リクエストデータのバリデーション
+        // リクエストデータのバリデーション
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'type' => ['required', Rule::in(['contract', 'trial'])], // 'contract' または 'trial' のいずれか
@@ -125,7 +125,7 @@ class ServiceController extends Controller
             'category_icon' => 'nullable|string|max:50', // category_icon も更新対象に含める場合
         ]);
 
-        // 追加: サービスの更新
+        // サービスの更新
         try {
             // $service->update() メソッドで更新
             $service->update($validatedData);
@@ -154,7 +154,7 @@ class ServiceController extends Controller
      */
     public function destroy(Service $service)
     {
-        // 追加: 認証ユーザーがこのサービスを所有しているか確認
+        // 認証ユーザーがこのサービスを所有しているか確認
         // Implicit Model Binding で取得したサービスが認証ユーザーのものであることを確認
         if (Auth::id() !== $service->user_id) {
             // ログ出力して不正アクセスを記録
@@ -166,7 +166,7 @@ class ServiceController extends Controller
             return response()->json(['message' => 'このサービスへのアクセス権限がありません。'], 403); // 403 Forbidden レスポンス
         }
 
-        // 追加: サービスの削除
+        // サービスの削除
         try {
             $service->delete();
 
