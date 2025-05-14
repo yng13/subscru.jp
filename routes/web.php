@@ -30,10 +30,24 @@ Route::middleware('web')->group(function () {
             // TODO: 今後追加するAPI
             // Route::get('/services/{service}', [ServiceController::class, 'show']); // サービス詳細取得
 
-            // 認証済みのユーザー情報を取得するAPIルート (Sanctumデフォルト)
-            // このルートも必要であれば web ミドルウェア内で定義します
+// 認証済みのユーザー情報を取得するAPIルート (Sanctumデフォルト)
             Route::get('/user', function (Request $request) {
-                return $request->user();
+                $user = $request->user();
+                // 認証済みユーザーの場合、iCalフィードURLを追加して返す
+                if ($user) {
+                    // ルート名 'ical.feed' とユーザーのical_tokenを使用してURLを生成
+                    $icalFeedUrl = route('ical.feed', ['token' => $user->ical_token], true); // 絶対URLを生成 (true)
+                    // webcal スキームに置換
+                    $icalFeedUrl = str_replace('https://', 'webcal://', str_replace('http://', 'webcal://', $icalFeedUrl));
+
+
+                    return response()->json([
+                        'user' => $user,
+                        'ical_feed_url' => $icalFeedUrl,
+                    ]);
+                }
+                // 認証されていない場合はnullまたはエラーを返す（auth:sanctumミドルウェアで基本ガードされますが念のため）
+                return response()->json(null, 401);
             });
         });
     });

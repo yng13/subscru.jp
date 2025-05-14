@@ -148,7 +148,10 @@
                     {{-- ユーザーがログインしている場合のみURLを表示 --}}
                     @auth
                         {{-- userIcalUrl は Alpine.js の data プロパティから取得 --}}
-                        <span id="ical-url" class="flex-grow mr-4" x-text="userIcalUrl">webcal://subscru.example.com/feed/abcdef1234567890</span>
+                        {{-- ここをspanからaタグに変更し、hrefをバインド --}}
+                        <a id="ical-url" class="flex-grow mr-4 text-blue-600 hover:underline"
+                           x-bind:href="userIcalUrl"
+                           x-text="userIcalUrl">webcal://subscru.example.com/feed/abcdef1234567890</a>
                     @else
                         {{-- 未ログインの場合はメッセージを表示 --}}
                         <span class="flex-grow mr-4 text-gray-500">ログインすると表示されます。</span>
@@ -506,7 +509,7 @@
                             {{-- Bind select value to editingService data --}}
                             <select id="edit-notification-timing"
                                     class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
-                                    x-model="editingService.notificationTiming">
+                                    x-model="editingService.notification_timing">
                                 <option value="0">当日</option>
                                 <option value="1">1日前</option>
                                 <option value="3">3日前</option>

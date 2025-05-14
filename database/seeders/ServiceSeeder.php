@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB; // DBファサードを使用する場合
 use App\Models\Service; // Serviceモデルを使用する場合
 use App\Models\User; // Userモデルを使用する場合（user_id 登録のため）
 use Illuminate\Support\Facades\Hash; // Userのパスワードハッシュ化のため (必要であれば)
+use Illuminate\Support\Str; // Str ファサードを追加
 
 class ServiceSeeder extends Seeder
 {
@@ -24,6 +25,7 @@ class ServiceSeeder extends Seeder
             [
                 'name' => 'Test User',
                 'password' => Hash::make('password'), // パスワードはハッシュ化
+                'ical_token' => Str::random(60), // ★ここを追加/修正★
                 // その他のユーザー関連カラムがあれば追加
             ]
         );
@@ -32,6 +34,7 @@ class ServiceSeeder extends Seeder
         // DB::table('services')->truncate(); // 全件削除してから投入したい場合
 
         // モックデータに基づいてサービスを登録
+        // ... (以下サービス登録部分は変更なし) ...
         Service::create([
             'user_id' => $user->id, // 作成したユーザーのIDを紐づけ
             'name' => 'Netflix',
@@ -81,7 +84,5 @@ class ServiceSeeder extends Seeder
             'memo' => '年間プラン、期限が近い...',
             'category_icon' => 'fas fa-paint-brush',
         ]);
-
-        // 他のサービスデータも同様に追加
     }
 }

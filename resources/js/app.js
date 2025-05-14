@@ -65,6 +65,10 @@ function serviceListPage() {
         toastMessage: '',
         toastType: null, // 'success', 'error', null
 
+        // iCalフィード関連の状態プロパティ
+        userIcalToken: '', // ユーザーのiCalトークン
+        userIcalUrl: '', // 生成されたiCalフィードURL
+
         // サービスデータの例 (実際にはAPIから取得)
         services: [ // 初期状態は空にする
             // Netflixの通知対象日を翌日に設定（例: 2025/05/12）
@@ -73,46 +77,46 @@ function serviceListPage() {
                 id: 1,
                 name: 'Netflix',
                 type: 'contract',
-                notificationDate: '2025-05-12',
+                notification_date: '2025-05-12',
                 memo: '年払い契約、次回更新時に解約を検討...',
                 categoryIcon: 'fas fa-music',
-                notificationTiming: '7'
-            }, // notificationTimingを追加
+                notification_timing: '7'
+            }, // notification_timingを追加
             {
                 id: 2,
                 name: 'Google Drive',
                 type: 'trial',
-                notificationDate: '2026-01-15',
+                notification_date: '2026-01-15',
                 memo: 'トライアル終了前に容量を確認...',
                 categoryIcon: 'fas fa-cloud',
-                notificationTiming: '3'
+                notification_timing: '3'
             },
             {
                 id: 3,
                 name: 'Spotify',
                 type: 'contract',
-                notificationDate: '2025-11-20',
+                notification_date: '2025-11-20',
                 memo: 'ファミリープランを契約中...',
                 categoryIcon: 'fas fa-music',
-                notificationTiming: '0'
+                notification_timing: '0'
             },
             {
                 id: 4,
                 name: 'AWS S3',
                 type: 'contract',
-                notificationDate: '2026-03-01',
+                notification_date: '2026-03-01',
                 memo: 'バックアップ用ストレージ...',
                 categoryIcon: 'fas fa-database',
-                notificationTiming: '30'
+                notification_timing: '30'
             },
             {
                 id: 5,
                 name: 'Adobe Creative Cloud',
                 type: 'contract',
-                notificationDate: '2025-10-10',
+                notification_date: '2025-10-10',
                 memo: '年間プラン、期限が近い...',
                 categoryIcon: 'fas fa-paint-brush',
-                notificationTiming: '1'
+                notification_timing: '1'
             },
              */
         ],
@@ -126,7 +130,7 @@ function serviceListPage() {
             name: '',
             type: '', // ラジオボタンは初期値 null または '' が良い
             notification_date: '',
-            notificationTiming: '0', // select の初期値
+            notification_timing: '0', // select の初期値
             memo: '',
             errors: {
                 name: '',
@@ -183,11 +187,20 @@ function serviceListPage() {
 
                 // 取得したサービスデータで services 配列を更新
                 // バックエンドからのレスポンス構造に合わせて 'data.services' などとアクセスします
-                this.services = data.services;
+                // notification_timing を数値に変換してセット
+                this.services = data.services.map(service => {
+                    return {
+                        ...service,
+                        notification_timing: parseInt(service.notification_timing, 10)
+                    };
+                });
                 console.log('サービス一覧を正常に取得しました', this.services);
 
                 // 取得後にフロントエンドでソートを適用（バックエンドでソートしない場合）
                 this.sortServices(this.sortBy);
+
+                // 取得後にフロントエンドでソートを適用（ソート方向は切り替えない）
+                this.sortServices(this.sortBy, false); // toggleDirection を false に設定
 
 
             } catch (error) {
@@ -220,31 +233,33 @@ function serviceListPage() {
 
                 const handledResponse = await handleApiResponse(response);
 
-                const user = await handledResponse.json(); // ユーザー情報を取得
+                const data = await handledResponse.json(); // レスポンス全体を取得
 
-                // ユーザー情報からical_tokenを取得し、保存
-                if (user && user.ical_token) {
-                    this.userIcalToken = user.ical_token;
-                    // iCalフィードURLを生成
-                    // Laravel のルート名 'ical.feed' を使ってURLを生成 (バックエンドで生成する方が安全)
-                    // ここでは一旦フロントエンドで組み立てますが、後で修正推奨
-                    // TODO: バックエンドで安全にURLを生成してフロントエンドに渡すように修正
-                    // 例: /feed/ical/ユーザーのトークン.ics
-                    const baseUrl = window.location.origin; // 現在のサイトのオリジンを取得
-                    this.userIcalUrl = `webcal://${baseUrl.replace(/^https?:\/\//, '')}/feed/ical/${this.userIcalToken}.ics`; // webcalスキームを使用
+                // ユーザー情報とiCalフィードURLを個別に取得
+                const user = data.user;
+                const icalFeedUrl = data.ical_feed_url; // APIレスポンスから直接URLを取得
+
+                // ユーザー情報があればiCalフィードURLを保存
+                if (user && icalFeedUrl) { // icalFeedUrl が存在することも確認
+                    // this.userIcalToken はもう不要なので削除しても良いですが、今回はそのままにします
+                    // this.userIcalToken = user.ical_token; // トークンが必要な場合はここで保持
+                    this.userIcalUrl = icalFeedUrl; // バックエンドから受け取ったURLをセット
                     console.log('iCal URL:', this.userIcalUrl);
+                    console.log('DEBUG: userIcalUrl after set:', this.userIcalUrl);
                 } else {
-                    console.warn('Authenticated user or iCal token not found.');
-                    // トークンがない場合の表示をクリア
-                    this.userIcalToken = '';
+                    console.warn('Authenticated user or iCal feed URL not found.');
+                    // トークンやURLがない場合の表示をクリア
+                    // this.userIcalToken = ''; // 不要であれば削除
                     this.userIcalUrl = 'ログインすると表示されます。';
+                    console.log('DEBUG: userIcalUrl after set (not found):', this.userIcalUrl);
                 }
 
             } catch (error) {
-                console.error('認証ユーザーの取得中にエラーが発生しました:', error);
+                console.error('認証ユーザーまたはiCalフィードURLの取得中にエラーが発生しました:', error);
                 // エラー時もトークンとURLをクリア
-                this.userIcalToken = '';
+                // this.userIcalToken = ''; // 不要であれば削除
                 this.userIcalUrl = 'エラーにより取得できませんでした。';
+                console.log('DEBUG: userIcalUrl after set (error):', this.userIcalUrl);
                 // 認証エラーはhandleApiResponseでリダイレクトされるため、ここではトーストは不要かもしれません
             }
         },
@@ -321,7 +336,7 @@ function serviceListPage() {
             this.addModalForm.name = '';
             this.addModalForm.type = '';
             this.addModalForm.notification_date = '';
-            this.addModalForm.notificationTiming = '0';
+            this.addModalForm.notification_timing = '0';
             this.addModalForm.memo = '';
             // エラーメッセージもクリア
             this.addModalForm.errors.name = '';
@@ -340,8 +355,6 @@ function serviceListPage() {
 
         // 通知対象日の残り日数を計算する関数
         getDaysRemaining(dateString) {
-            console.log('DEBUG: getDaysRemaining received:', dateString, typeof dateString);
-
             // null または undefined の場合のハンドリングを追加
             if (!dateString) {
                 //console.warn('getDaysRemaining called with null or undefined dateString');
@@ -371,8 +384,6 @@ function serviceListPage() {
 
         // 日付をYYYY/MM/DD 形式にフォーマットする関数
         formatDate(dateString) {
-            console.log('DEBUG: formatDate received:', dateString, typeof dateString);
-
             // null または undefined の場合のハンドリングを追加
             if (!dateString) {
                 return 'N/A';
@@ -389,44 +400,59 @@ function serviceListPage() {
         },
 
         // ソート処理を行う関数
-        sortServices(key) {
+        // ソート処理を行う関数
+        // toggleDirection: trueの場合ソート方向を切り替え、falseの場合は切り替えない (デフォルト: true)
+        sortServices(key, toggleDirection = true) { // 引数 toggleDirection を追加し、デフォルト値を true に
             if (this.sortBy === key) {
-                this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+                // 同じキーがクリックされ、かつソート方向の切り替えが有効な場合
+                if (toggleDirection) { // toggleDirection のチェックを追加
+                    this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+                }
             } else {
+                // 異なるキーがクリックされた場合はソートキーを更新し、方向をascにする
                 this.sortBy = key;
                 this.sortDirection = 'asc';
             }
 
             // サービスデータをソート
             this.services.sort((a, b) => {
+                // ... (ソートロジックは変更なし) ...
                 let comparison = 0;
                 let valueA = a[this.sortBy];
                 let valueB = b[this.sortBy];
 
                 // 通知対象日の場合は日付として比較
                 if (this.sortBy === 'notification_date') {
-                    // 不正な日付の場合の比較を考慮
                     const dateA = new Date(valueA).getTime();
                     const dateB = new Date(valueB).getTime();
 
-                    if (isNaN(dateA) && isNaN(dateB)) comparison = 0; // 両方不正なら同じ扱い
-                    else if (isNaN(dateA)) comparison = 1; // Aが不正ならBの方が大きい
-                    else if (isNaN(dateB)) comparison = -1; // Bが不正ならAの方が大きい
+                    if (isNaN(dateA) && isNaN(dateB)) comparison = 0;
+                    else if (isNaN(dateA)) comparison = 1;
+                    else if (isNaN(dateB)) comparison = -1;
                     else if (dateA > dateB) comparison = 1;
                     else if (dateA < dateB) comparison = -1;
 
                 } else {
                     // 文字列の場合はロケールを考慮して比較
-                    valueA = String(valueA).toLowerCase();
-                    valueB = String(valueB).toLowerCase();
-
-
-                    if (valueA > valueB) {
-                        comparison = 1;
-                    } else if (valueA < valueB) {
-                        comparison = -1;
+                    // notification_timing が数値であることを前提
+                    if (this.sortBy === 'notification_timing') { // ★ notification_timing の数値比較を追加 ★
+                        if (valueA > valueB) comparison = 1;
+                        else if (valueA < valueB) comparison = -1;
+                        else comparison = 0;
+                    } else {
+                        // その他の文字列での比較
+                        valueA = String(valueA).toLowerCase();
+                        valueB = String(valueB).toLowerCase();
+                        if (valueA > valueB) {
+                            comparison = 1;
+                        } else if (valueA < valueB) {
+                            comparison = -1;
+                        } else {
+                            comparison = 0;
+                        }
                     }
                 }
+
 
                 // 降順の場合は比較結果を反転
                 return this.sortDirection === 'desc' ? comparison * -1 : comparison;
@@ -500,6 +526,9 @@ function serviceListPage() {
                     // editingService がセットされた直後のログ
                     console.log('DEBUG: editingService set:', JSON.parse(JSON.stringify(this.editingService)));
                     console.log('DEBUG: editingService.notification_date:', this.editingService.notification_date, typeof this.editingService.notification_date);
+                    // Debug: editingService.notification_timing の値と型を確認
+                    console.log('DEBUG: editingService.notification_timing value:', this.editingService.notification_timing);
+                    console.log('DEBUG: editingService.notification_timing type:', typeof this.editingService.notification_timing);
 
                     this.resetEditFormErrors(); // 編集モーダルを開く前にエラーをリセット
                     this.showEditModal = true;
@@ -599,7 +628,7 @@ function serviceListPage() {
                         name: this.editingService.name,
                         type: this.editingService.type,
                         notification_date: this.editingService.notification_date, // YYYY-MM-DD 形式になっているはず
-                        notificationTiming: parseInt(this.editingService.notificationTiming, 10), // 数値に変換
+                        notification_timing: parseInt(this.editingService.notification_timing, 10), // 数値に変換
                         memo: this.editingService.memo,
                         // category_icon など、更新可能な他の項目も必要に応じて追加
                         category_icon: this.editingService.category_icon, // 例: category_icon も更新対象の場合
@@ -632,6 +661,12 @@ function serviceListPage() {
                 // 保存成功後:
                 // 1. サービス一覧を更新するために再度 API を呼び出す
                 await this.fetchServices();
+
+                // 保存後のソート設定を確認するログを追加
+                console.log('DEBUG: Sort settings after save and fetch:', {
+                    sortBy: this.sortBy,
+                    sortDirection: this.sortDirection
+                });
                 // 2. 編集モーダルを閉じる
                 this.closeModals();
                 // 3. 成功したことを示すトースト通知を表示
@@ -702,7 +737,7 @@ function serviceListPage() {
                         name: this.addModalForm.name,
                         type: this.addModalForm.type,
                         notification_date: this.addModalForm.notification_date, // APIキー名に合わせる
-                        notificationTiming: parseInt(this.addModalForm.notificationTiming, 10), // 数値に変換
+                        notification_timing: parseInt(this.addModalForm.notification_timing, 10), // 数値に変換
                         memo: this.addModalForm.memo,
                         // カテゴリアイコンは現在フォームにないので、ここでは送信しないか、固定値を送る
                         // category_icon: 'fas fa-question-circle', // 例: 固定値を送る場合
@@ -732,6 +767,13 @@ function serviceListPage() {
                 // 登録成功後:
                 // 1. サービス一覧を更新するために再度 API を呼び出す
                 await this.fetchServices();
+
+                // 保存後のソート設定を確認するログを追加
+                console.log('DEBUG: Sort settings after save and fetch:', {
+                    sortBy: this.sortBy,
+                    sortDirection: this.sortDirection
+                });
+
                 // 2. 新規登録モーダルを閉じる
                 this.closeModals();
                 // 3. 成功したことを示すトースト通知を表示
@@ -845,6 +887,7 @@ function serviceListPage() {
             // 未ログイン時にこのページにアクセスしようとすると、Fortifyのミドルウェアが
             // ログインページへリダイレクトするため、未ログインでfetchServicesが実行されることはありません。
             this.fetchServices();
+            this.fetchAuthenticatedUser();
         },
     }
 }

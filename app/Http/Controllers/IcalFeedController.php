@@ -44,17 +44,38 @@ class IcalFeedController extends Controller
         $icalContent .= "METHOD:PUBLISH\r\n"; // PUBLISHメソッドを追加
 
         foreach ($services as $service) {
-            // 通知対象日を YYYYMMDD 形式にフォーマット
-            $notificationDate = \Carbon\Carbon::parse($service->notification_date)->format('Ymd');
+            // 通知対象日をCarbonオブジェクトとしてパース
+            $notificationDate = \Carbon\Carbon::parse($service->notification_date);
+
+            // 通知タイミングを考慮したイベント開始日を計算
+            // notification_timing が0の場合は当日、それ以外はその日数分前の日付
+            $eventStartDate = $notificationDate->copy()->subDays($service->notification_timing);
+
+            // iCalender形式の日付フォーマット (終日イベントなので YYYYMMDD 形式)
+            $formattedEventStartDate = $eventStartDate->format('Ymd');
 
             // iCalenderイベントの生成
             $icalContent .= "BEGIN:VEVENT\r\n";
-            $icalContent .= "UID:{$service->id}@subscru.jp\r\n"; // サービスIDを元にしたユニークなUID
-            $icalContent .= "DTSTAMP:" . \Carbon\Carbon::now()->format('Ymd\THis\Z') . "\r\n"; // 現在時刻
-            $icalContent .= "DTSTART;VALUE=DATE:{$notificationDate}\r\n"; // 通知対象日 (終日イベントとして扱います)
+            $icalContent .= "UID:" . uniqid() . "@subscru.jp\r\n"; // よりユニークなUIDを生成 (サービスIDだけだと衝突の可能性も)
+            $icalContent .= "DTSTAMP:" . \Carbon\Carbon::now()->format('Ymd\THis\Z') . "\r\n"; // 現在時刻 (UTC)
+            $icalContent .= "DTSTART;VALUE=DATE:{$formattedEventStartDate}\r\n"; // 通知対象日 (終日イベント)
+            // 終日イベントの場合、DTEND は DTSTART の翌日を設定するのが一般的ですが、必須ではありません。
+            // 簡単のため、DTENDは省略します。必要であれば追加します。
+            // $icalContent .= "DTEND;VALUE=DATE:" . $eventStartDate->copy()->addDay()->format('Ymd') . "\r\n";
+
             $icalContent .= "SUMMARY:" . addcslashes($service->name, ",;\\") . "の通知対象日\r\n"; // サービス名
-            $icalContent .= "DESCRIPTION:" . addcslashes($service->memo ?? 'メモなし', ",;\\") . "\r\n"; // メモ
-            // LOCATION や URL など、必要に応じて他のプロパティも追加できます
+            // メモが空の場合は表示しない、または「メモなし」と表示
+            if (!empty($service->memo)) {
+                $icalContent .= "DESCRIPTION:" . addcslashes($service->memo, ",;\\") . "\r\n"; // メモ
+            } else {
+                $icalContent .= "DESCRIPTION:メモなし\r\n";
+            }
+
+            // 必要に応じて他のプロパティも追加
+            // 例: CREATED (サービス登録日時), LAST-MODIFIED (サービス更新日時)
+            $icalContent .= "CREATED:" . \Carbon\Carbon::parse($service->created_at)->format('Ymd\THis\Z') . "\r\n";
+            $icalContent .= "LAST-MODIFIED:" . \Carbon\Carbon::parse($service->updated_at)->format('Ymd\THis\Z') . "\r\n";
+
             $icalContent .= "END:VEVENT\r\n";
         }
 
