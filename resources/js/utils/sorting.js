@@ -36,7 +36,7 @@ export function sortingLogic() {
 
             // Alpine の $data マジックプロパティを使用して fetchServices を呼び出す
             // $data は serviceListPage() が返すオブジェクト全体を指す
-            this.$data.fetchServices(1, this.sortBy, this.sortDirection); // <<< $data を経由して呼び出し
+            this.$data.fetchServices(1, this.sortBy, this.sortDirection); //  $data を経由して呼び出し
         },
 
         // init メソッドで初期ソート状態を設定する場合などに使用するヘルパー

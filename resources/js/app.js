@@ -44,14 +44,14 @@ function serviceListPage() {
     const fetchServicesCallback = (page, sortBy, sortDirection) => this.fetchServices(page, sortBy, sortDirection);
 
     // sortingLogic に fetchServicesCallback を渡してソートロジックを取得
-    const sorting = sortingLogic(fetchServicesCallback); // <<< sortingLogic にコールバック関数を渡す
+    const sorting = sortingLogic(fetchServicesCallback); //  sortingLogic にコールバック関数を渡す
 
 
     return {
         // === State properties ===
         ...forms,
         ...notification,
-        ...sorting, // <<< sortingLogic から返されるプロパティとメソッドを展開して追加
+        ...sorting, //  sortingLogic から返されるプロパティとメソッドを展開して追加
 
         isDrawerOpen: false,
 
@@ -402,7 +402,7 @@ function serviceListPage() {
             });
 
             // ソートの状態を初期化
-            this.setInitialSort(initialSortBy, initialSortDirection); // <<< sortingLogic から取得したメソッドを呼び出す
+            this.setInitialSort(initialSortBy, initialSortDirection); //  sortingLogic から取得したメソッドを呼び出す
 
             const initialUrl = new URL(window.location.origin + window.location.pathname);
             initialUrl.searchParams.set('page', initialPage);
