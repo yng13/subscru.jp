@@ -19,36 +19,41 @@ async function handleApiResponse(response) {
     }
 
     // 成功レスポンスの場合、JSONとしてパースして返す
-    // ページネーション情報はボディに含まれるため、ここでパースして呼び出し元に渡す
-    return response.json(); // ここで response.json() を呼び出す
+    return response.json();
 }
 
 
-// サービス一覧を取得するAPI呼び出し関数 (ページネーション対応)
-// page パラメータを受け取るように修正
-export async function fetchServicesApi(page = 1) { // デフォルト値を1に設定
+// サービス一覧を取得するAPI呼び出し関数 (ページネーション & ソート対応)
+// page, sortBy, sortDirection パラメータを受け取る
+export async function fetchServicesApi(page = 1, sortBy = 'notification_date', sortDirection = 'asc') { // デフォルト値を設定
     try {
-        // APIエンドポイントURLにページ番号をクエリパラメータとして追加
-        // 例: /api/services?page=2
-        const response = await fetch(`/api/services?page=${page}`, {
+        // === クエリパラメータを生成 (短いパラメータ名を使用) ===
+        const queryParams = new URLSearchParams();
+        queryParams.append('page', page);
+        // ソートパラメータを追加 (短い名前 'sb' と 'sd' を使用)
+        queryParams.append('sb', sortBy);
+        queryParams.append('sd', sortDirection);
+
+        // APIエンドポイントURLにクエリ文字列を追加
+        // 例: /api/services?page=1&sb=name&sd=desc
+        const url = `/api/services?${queryParams.toString()}`;
+        // ==================================================
+
+        const response = await fetch(url, { // 構築したURLを使用
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
-                'X-CSRF-TOKEN': getCsrfToken() // GETでも含めるのが安全
+                'X-CSRF-TOKEN': getCsrfToken()
             }
         });
 
-        // 共通のエラーハンドリング関数を使用し、JSONレスポンスを直接返す
-        // handleApiResponse 関数内で response.json() が呼び出されるようになりました
-        const data = await handleApiResponse(response); // response.json() の結果が data に入る
+        const data = await handleApiResponse(response);
 
-        // Laravel の paginate() メソッドのレスポンス構造を想定
-        // data オブジェクト全体を返す (データ配列とページネーション情報を含む)
         return data;
 
     } catch (error) {
         console.error('Failed to fetch services in API module:', error);
-        throw error; // エラーを呼び出し元に再スロー
+        throw error;
     }
 }
 
@@ -63,10 +68,8 @@ export async function fetchAuthenticatedUserApi() {
             }
         });
 
-        // handleApiResponse 関数内で response.json() が呼び出されるようになりました
-        const data = await handleApiResponse(response); // response.json() の結果が data に入る
+        const data = await handleApiResponse(response);
 
-        // ユーザー情報とiCalフィードURLを返す
         return {
             user: data.user,
             icalFeedUrl: data.ical_feed_url
@@ -95,13 +98,10 @@ export async function addServiceApi(formData) {
                 notification_date: formData.notification_date,
                 notification_timing: parseInt(formData.notification_timing, 10),
                 memo: formData.memo,
-                // category_icon はフォームにないので含めないか、デフォルト値をバックエンドで設定
-                // バックエンドのServiceController::storeでcategory_iconのバリデーションとデフォルト値が設定されているため、ここでは含めなくてもOK
             })
         });
 
-        // handleApiResponse 関数内で response.json() が呼び出されるようになりました
-        const result = await handleApiResponse(response); // response.json() の結果が result に入る
+        const result = await handleApiResponse(response);
 
         return result.service;
 
@@ -131,8 +131,7 @@ export async function saveServiceApi(serviceId, formData) {
             })
         });
 
-        // handleApiResponse 関数内で response.json() が呼び出されるようになりました
-        const result = await handleApiResponse(response); // response.json() の結果が result に入る
+        const result = await handleApiResponse(response);
 
         return result.service;
 
@@ -153,14 +152,9 @@ export async function deleteServiceApi(serviceId) {
             }
         });
 
-        // handleApiResponse 関数内で response.json() が呼び出されるようになりました
-        // 削除APIは通常成功してもボディがないことが多いが、handleApiResponse は json() を返すため
-        // レスポンスボディがない場合はエラーにならないように handleApiResponse を少し調整するか、
-        // ここで response.json() を削除して handleApiResponse の戻り値を調整する
-        // 今回は handleApiResponse の戻り値をそのまま使い、ボディがなくてもエラーにならないようにする
-        const result = await handleApiResponse(response); // response.json() の結果が result に入る (空オブジェクトなど)
+        const result = await handleApiResponse(response);
 
-        return true; // 成功した場合は true を返す
+        return true;
 
     } catch (error) {
         console.error('Failed to delete service in API module:', error);

@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 class ServiceController extends Controller
 {
     /**
-     * サービス一覧を取得するAPI
+     * サービス一覧を取得するAPI (ページネーション & ソート対応)
      *
      * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -22,21 +22,37 @@ class ServiceController extends Controller
         // 認証済みのユーザーに紐づくサービスのみを取得
         $query = Auth::user()->services();
 
-        // TODO: 必要に応じて、ソートや検索のクエリパラメータを処理
-        // 現状はフロントエンドでソートしていますが、バックエンドで処理する場合はここで実装します
-        // 例: $sortBy = $request->query('sortBy', 'notification_date');
-        // 例: $sortDirection = $request->query('sortDirection', 'asc');
-        // $query->orderBy($sortBy, $sortDirection);
+        // === ソートのクエリパラメータを処理 (パラメータ名を短縮) ===
+        // パラメータ名を 'sb' (sortBy) と 'sd' (sortDirection) に変更
+        $sortBy = $request->query('sb', 'notification_date'); // デフォルトは notification_date
+        $sortDirection = $request->query('sd', 'asc'); // デフォルトは昇順
+
+        // 許可するソート可能なカラムを定義 (カラム名自体は変更しない)
+        $allowedSortColumns = ['name', 'type', 'notification_date', 'notification_timing'];
+
+        // ソートキーが許可されたカラムに含まれているかチェック
+        if (!in_array($sortBy, $allowedSortColumns)) {
+            // 許可されていない場合はデフォルトのソートキーに戻す
+            $sortBy = 'notification_date';
+        }
+
+        // ソート方向が 'asc' または 'desc' であるかチェック
+        if (!in_array(strtolower($sortDirection), ['asc', 'desc'])) {
+            // 不正な場合はデフォルトの昇順に戻す
+            $sortDirection = 'asc';
+        }
+
+        // クエリにソートを適用 (使用するカラム名と方向は変更なし)
+        $query->orderBy($sortBy, $sortDirection);
+        // ====================================================
 
 
         // ページネーションを適用
-        // デフォルトで1ページあたり15件表示。クエリパラメータ 'per_page' で変更可能にする場合:
         $perPage = $request->query('per_page', 15); // デフォルト15件
         $services = $query->paginate($perPage);
 
 
         // 取得したサービスデータとページネーション情報をJSON形式で返す
-        // paginate() メソッドの戻り値は、JSONにシリアライズされる際に自動的にページネーション情報を含みます。
         return response()->json($services, 200);
     }
 
@@ -45,45 +61,37 @@ class ServiceController extends Controller
      */
     public function store(Request $request)
     {
-        // リクエストデータのバリデーション
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|in:contract,trial', // 'contract' または 'trial' のいずれか
-            'notification_date' => 'required|date', // 有効な日付形式であること
-            // 'notificationTiming' はフロントエンドから notification_timing に名称変更しました
-            'notification_timing' => 'nullable|integer', // 任意項目で整数
-            'memo' => 'nullable|string|max:1000', // 任意項目で文字列、最大1000文字
-            // 'category_icon' はUI側で決定されるため、ここでは必須としないか、
-            // 必要に応じてバリデーションルールを追加してください
-            'category_icon' => 'nullable|string|max:50', // category_icon も登録対象に含める場合
+            'type' => 'required|in:contract,trial',
+            'notification_date' => 'required|date',
+            'notification_timing' => 'nullable|integer',
+            'memo' => 'nullable|string|max:1000',
+            'category_icon' => 'nullable|string|max:50',
         ]);
 
-        // サービスの作成とデータベースへの保存
         try {
-            // Auth::id() で認証済みのユーザーIDを取得
             $service = Service::create([
-                'user_id' => Auth::id(), // 認証ユーザーのIDを使用
+                'user_id' => Auth::id(),
                 'name' => $validatedData['name'],
                 'type' => $validatedData['type'],
                 'notification_date' => $validatedData['notification_date'],
-                'notification_timing' => $validatedData['notification_timing'] ?? 0, // nullの場合はデフォルト0
-                'memo' => $validatedData['memo'] ?? null, // nullの場合はnull
-                'category_icon' => $validatedData['category_icon'] ?? 'fas fa-question-circle', // nullの場合はデフォルトアイコン
+                'notification_timing' => $validatedData['notification_timing'] ?? 0,
+                'memo' => $validatedData['memo'] ?? null,
+                'category_icon' => $validatedData['category_icon'] ?? 'fas fa-question-circle',
             ]);
 
-            // 成功レスポンスを返す
             return response()->json([
-                'service' => $service, // 作成されたサービスデータを返すことも可能
+                'service' => $service,
                 'message' => 'サービスを正常に登録しました。',
-            ], 201); // ステータスコード201 (Created)
+            ], 201);
 
         } catch (\Exception $e) {
-            // エラーレスポンスを返す
-            \Log::error('サービスの登録中にエラーが発生しました: ' . $e->getMessage()); // ログ出力
+            \Log::error('サービスの登録中にエラーが発生しました: ' . $e->getMessage());
             return response()->json([
                 'message' => 'サービスの登録に失敗しました。',
-                'error' => $e->getMessage(), // デバッグ用にエラーメッセージを含めることも
-            ], 500); // ステータスコード500 (Internal Server Error)
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
 
@@ -92,16 +100,13 @@ class ServiceController extends Controller
      */
     public function show(Service $service)
     {
-        // TODO: サービス詳細の取得処理 (必要であれば)
-        // 認証実装後に、このサービスが認証ユーザーのものであるか確認が必要
-        // Implicit Model Binding で取得したサービスが認証ユーザーのものであることを確認
         if (Auth::id() !== $service->user_id) {
             \Log::warning('Unauthorized attempt to show service.', [
                 'user_id' => Auth::id(),
                 'service_id' => $service->id,
                 'service_owner_id' => $service->user_id,
             ]);
-            return response()->json(['message' => 'このサービスへのアクセス権限がありません。'], 403); // 403 Forbidden レスポンス
+            return response()->json(['message' => 'このサービスへのアクセス権限がありません。'], 403);
         }
 
         return response()->json($service);
@@ -116,42 +121,33 @@ class ServiceController extends Controller
      */
     public function update(Request $request, Service $service)
     {
-        // 認証ユーザーがこのサービスを所有しているか確認
-        // Implicit Model Binding で取得したサービスが認証ユーザーのものであることを確認
         if ($request->user()->id !== $service->user_id) {
-            // ログ出力して不正アクセスを記録
             \Log::warning('Unauthorized attempt to update service.', [
                 'user_id' => $request->user()->id,
                 'service_id' => $service->id,
                 'service_owner_id' => $service->user_id,
             ]);
-            return response()->json(['message' => 'このサービスへのアクセス権限がありません。'], 403); // 403 Forbidden レスポンス
+            return response()->json(['message' => 'このサービスへのアクセス権限がありません。'], 403);
         }
 
-        // リクエストデータのバリデーション
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => ['required', Rule::in(['contract', 'trial'])], // 'contract' または 'trial' のいずれか
-            'notification_date' => 'required|date', // 有効な日付形式であること
-            // 'notificationTiming' はフロントエンドから notification_timing に名称変更しました
-            'notification_timing' => 'nullable|integer', // 任意項目で整数
-            'memo' => 'nullable|string|max:1000', // 任意項目で文字列、最大1000文字
-            'category_icon' => 'nullable|string|max:50', // category_icon も更新対象に含める場合
+            'type' => ['required', Rule::in(['contract', 'trial'])],
+            'notification_date' => 'required|date',
+            'notification_timing' => 'nullable|integer',
+            'memo' => 'nullable|string|max:1000',
+            'category_icon' => 'nullable|string|max:50',
         ]);
 
-        // サービスの更新
         try {
-            // $service->update() メソッドで更新
             $service->update($validatedData);
 
-            // 更新後のサービスデータを返す
             return response()->json([
-                'service' => $service, // 更新後のサービスデータを返す
+                'service' => $service,
                 'message' => 'サービスを正常に更新しました。',
-            ], 200); // ステータスコード200 (OK)
+            ], 200);
 
         } catch (\Exception $e) {
-            // エラーレスポンスを返す
             \Log::error('サービスの更新中にエラーが発生しました: ' . $e->getMessage());
             return response()->json([
                 'message' => 'サービスの更新に失敗しました。',
@@ -168,30 +164,23 @@ class ServiceController extends Controller
      */
     public function destroy(Service $service)
     {
-        // 認証ユーザーがこのサービスを所有しているか確認
-        // Implicit Model Binding で取得したサービスが認証ユーザーのものであることを確認
         if (Auth::id() !== $service->user_id) {
-            // ログ出力して不正アクセスを記録
             \Log::warning('Unauthorized attempt to delete service.', [
                 'user_id' => Auth::id(),
                 'service_id' => $service->id,
                 'service_owner_id' => $service->user_id,
             ]);
-            return response()->json(['message' => 'このサービスへのアクセス権限がありません。'], 403); // 403 Forbidden レスポンス
+            return response()->json(['message' => 'このサービスへのアクセス権限がありません。'], 403);
         }
 
-        // サービスの削除
         try {
             $service->delete();
 
-            // 成功レスポンスを返す (削除の場合、通常はコンテンツなしの 204 No Content を返すか、
-            // 成功メッセージと共に 200 OK を返します。ここでは 200 OK とメッセージの例を示します。)
             return response()->json([
                 'message' => 'サービスを正常に削除しました。',
             ], 200); // または 204 (No Content)
 
         } catch (\Exception $e) {
-            // エラーレスポンスを返す
             \Log::error('サービスの削除中にエラーが発生しました: ' . $e->getMessage());
             return response()->json([
                 'message' => 'サービスの削除に失敗しました。',
