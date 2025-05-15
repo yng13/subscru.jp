@@ -1,10 +1,13 @@
+{{-- resources/views/components/service-list-section.blade.php --}}
+
 <section class="bg-white p-6 rounded-lg shadow mb-8">
     <h1 class="text-2xl font-semibold text-gray-900 mb-6">サービス一覧</h1>
 
     {{-- Debug: Display service count --}}
     {{-- ロード中は非表示 --}}
-    <p x-text="'Services count: ' + services.length" class="mb-4 text-sm text-gray-600"
-       x-show="!isLoading && services.length > 0"></p>
+    {{-- 総件数 (pagination.total) を表示するように変更 --}}
+    <p x-text="'Services count: ' + pagination.total" class="mb-4 text-sm text-gray-600"
+       x-show="!isLoading && pagination.total > 0"></p>
 
     {{-- ロード中の表示 --}}
     <div x-show="isLoading" class="text-center text-blue-600 text-lg font-semibold py-8">
@@ -66,16 +69,13 @@
                           x-text="service.type === 'contract' ? '契約中' : 'トライアル中'"></span>
                 </div>
                 {{-- PC: Stack date and days remaining / スマホ: Horizontal --}}
-                {{-- flex flex-col (PC/スマホ) -> flex flex-row (スマホ) md:flex-col (PC) に変更 --}}
-                {{-- items-center (PC/スマホ) -> items-start (スマホ) md:items-center (PC) に変更 --}}
-                <div
-                    class="mb-2 md:mb-0 md:py-4 md:px-6 notification-text flex flex-row items-center md:flex-col md:items-start"> {{-- flex-row items-center を追加, flex-col items-start を md: プレフィックス付きに変更 --}}
+                <div class="mb-2 md:mb-0 md:py-4 md:px-6 notification-text flex flex-row items-center md:flex-col md:items-start">
                     <span class="md:hidden font-semibold mr-2">通知対象日:</span>
                     {{-- 日付と残り日数を囲むspanにスペースを追加 --}}
-                    <span class="space-x-2"> {{-- space-x-2 を追加 --}}
-                            <span x-text="formatDate(service.notification_date)"></span>
-                            <span
-                                x-text="'(あと ' + getDaysRemaining(service.notification_date) + ' 日)'"></span></span>
+                    <span class="space-x-2">
+                        <span x-text="formatDate(service.notification_date)"></span>
+                        <span x-text="'(あと ' + getDaysRemaining(service.notification_date) + ' 日)'"></span>
+                    </span>
                 </div>
                 <div class="md:py-4 md:px-6 break-words md:flex-1 w-full">
                     <span class="md:hidden font-semibold mr-2">メモ:</span>
@@ -85,26 +85,28 @@
         </template>
         {{-- Message when services list is empty --}}
         {{-- ロード中は非表示 --}}
-        <div x-show="!isLoading && services.length === 0" class="p-4 text-center text-gray-500">
+        <div x-show="!isLoading && pagination.total === 0" class="p-4 text-center text-gray-500">
             サービスはまだ登録されていません。
         </div>
     </div>
 
-    {{-- Static pagination links for now --}}
-    {{-- ロード中は非表示 --}}
-    <div class="pagination flex justify-center items-center mt-8" x-show="!isLoading && services.length > 0">
-        <a href="#"
-           class="page-link px-4 py-2 mx-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-200">&laquo;
-            前へ</a>
-        <a href="#"
-           class="page-link px-4 py-2 mx-1 border border-blue-500 rounded-md bg-blue-500 text-white pointer-events-none">1</a>
-        <a href="#"
-           class="page-link px-4 py-2 mx-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-200">2</a>
-        <a href="#"
-           class="page-link px-4 py-2 mx-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-200">3</a>
-        <a href="#"
-           class="page-link px-4 py-2 mx-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-200">次へ
-            &raquo;</a>
+    {{-- === ページネーションリンクを動的に生成 === --}}
+    {{-- サービスが1ページに収まらない場合のみ表示 (pagination.last_page > 1) --}}
+    <div class="pagination flex justify-center items-center mt-8" x-show="!isLoading && pagination.last_page > 1">
+        <template x-for="(link, index) in pagination.links" :key="index">
+            {{-- ページリンク --}}
+            <a href="#"
+               class="page-link px-4 py-2 mx-1 border rounded-md text-gray-700 hover:bg-gray-200"
+               :class="{
+                    'border-blue-500 bg-blue-500 text-white pointer-events-none hover:bg-blue-500': link.active, // アクティブなページ
+                    'border-gray-300': !link.active, // 非アクティブなページ
+                    'pointer-events-none opacity-50': !link.url // 前後ページでURLがない場合 (最初/最後のページ)
+               }"
+               x-text="link.label === 'pagination.previous' ? '前へ' : (link.label === 'pagination.next' ? '次へ' : link.label)" {{-- 前後ページは日本語ラベルに置き換え、それ以外は元のラベルを使用 --}}
+               @click.prevent="goToPage(link.url)" {{-- クリックイベントで goToPage を呼び出し --}}
+            ></a>
+        </template>
     </div>
+    {{-- ========================================= --}}
 
 </section>

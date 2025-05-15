@@ -20,19 +20,24 @@ class ServiceController extends Controller
     public function index(Request $request)
     {
         // 認証済みのユーザーに紐づくサービスのみを取得
-        // Auth::user() で認証済みのユーザーモデルを取得し、その services リレーションを使用
-        $services = Auth::user()->services()->get();
+        $query = Auth::user()->services();
 
-        // 必要に応じて、ソートやページネーションのクエリパラメータを処理 (現状はフロントエンドでソート)
-        // 例: $sortBy = $request->query('sortBy', 'notificationDate');
+        // TODO: 必要に応じて、ソートや検索のクエリパラメータを処理
+        // 現状はフロントエンドでソートしていますが、バックエンドで処理する場合はここで実装します
+        // 例: $sortBy = $request->query('sortBy', 'notification_date');
         // 例: $sortDirection = $request->query('sortDirection', 'asc');
-        // $services = $services->sortBy($sortBy, SORT_REGULAR, $sortDirection === 'desc');
+        // $query->orderBy($sortBy, $sortDirection);
 
-        // 取得したサービスデータをJSON形式で返す
-        return response()->json([
-            'services' => $services,
-            'message' => 'サービス一覧を正常に取得しました。',
-        ], 200);
+
+        // ページネーションを適用
+        // デフォルトで1ページあたり15件表示。クエリパラメータ 'per_page' で変更可能にする場合:
+        $perPage = $request->query('per_page', 15); // デフォルト15件
+        $services = $query->paginate($perPage);
+
+
+        // 取得したサービスデータとページネーション情報をJSON形式で返す
+        // paginate() メソッドの戻り値は、JSONにシリアライズされる際に自動的にページネーション情報を含みます。
+        return response()->json($services, 200);
     }
 
     /**
@@ -45,26 +50,25 @@ class ServiceController extends Controller
             'name' => 'required|string|max:255',
             'type' => 'required|in:contract,trial', // 'contract' または 'trial' のいずれか
             'notification_date' => 'required|date', // 有効な日付形式であること
-            'notificationTiming' => 'nullable|integer', // 任意項目で整数
+            // 'notificationTiming' はフロントエンドから notification_timing に名称変更しました
+            'notification_timing' => 'nullable|integer', // 任意項目で整数
             'memo' => 'nullable|string|max:1000', // 任意項目で文字列、最大1000文字
             // 'category_icon' はUI側で決定されるため、ここでは必須としないか、
             // 必要に応じてバリデーションルールを追加してください
-            // 'category_icon' => 'nullable|string|max:50',
+            'category_icon' => 'nullable|string|max:50', // category_icon も登録対象に含める場合
         ]);
 
         // サービスの作成とデータベースへの保存
         try {
-            // TODO: 認証ユーザーのIDを紐づける (認証機能実装後に Auth::id() などを使用)
-            // 現状は仮で user_id = 1 を設定します
             // Auth::id() で認証済みのユーザーIDを取得
             $service = Service::create([
                 'user_id' => Auth::id(), // 認証ユーザーのIDを使用
                 'name' => $validatedData['name'],
                 'type' => $validatedData['type'],
                 'notification_date' => $validatedData['notification_date'],
-                'notification_timing' => $validatedData['notificationTiming'] ?? 0,
-                'memo' => $validatedData['memo'] ?? null,
-                'category_icon' => $request->input('category_icon', 'fas fa-question-circle'), // UIから送られてくるか、デフォルト値を設定
+                'notification_timing' => $validatedData['notification_timing'] ?? 0, // nullの場合はデフォルト0
+                'memo' => $validatedData['memo'] ?? null, // nullの場合はnull
+                'category_icon' => $validatedData['category_icon'] ?? 'fas fa-question-circle', // nullの場合はデフォルトアイコン
             ]);
 
             // 成功レスポンスを返す
@@ -89,8 +93,17 @@ class ServiceController extends Controller
     public function show(Service $service)
     {
         // TODO: サービス詳細の取得処理 (必要であれば)
-        // 現状は Implicit Model Binding で取得したサービスオブジェクトを返す
         // 認証実装後に、このサービスが認証ユーザーのものであるか確認が必要
+        // Implicit Model Binding で取得したサービスが認証ユーザーのものであることを確認
+        if (Auth::id() !== $service->user_id) {
+            \Log::warning('Unauthorized attempt to show service.', [
+                'user_id' => Auth::id(),
+                'service_id' => $service->id,
+                'service_owner_id' => $service->user_id,
+            ]);
+            return response()->json(['message' => 'このサービスへのアクセス権限がありません。'], 403); // 403 Forbidden レスポンス
+        }
+
         return response()->json($service);
     }
 
@@ -120,7 +133,8 @@ class ServiceController extends Controller
             'name' => 'required|string|max:255',
             'type' => ['required', Rule::in(['contract', 'trial'])], // 'contract' または 'trial' のいずれか
             'notification_date' => 'required|date', // 有効な日付形式であること
-            'notificationTiming' => 'nullable|integer', // 任意項目で整数
+            // 'notificationTiming' はフロントエンドから notification_timing に名称変更しました
+            'notification_timing' => 'nullable|integer', // 任意項目で整数
             'memo' => 'nullable|string|max:1000', // 任意項目で文字列、最大1000文字
             'category_icon' => 'nullable|string|max:50', // category_icon も更新対象に含める場合
         ]);

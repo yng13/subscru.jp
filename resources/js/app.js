@@ -23,39 +23,43 @@ Alpine.plugin(intersect);
 
 // x-data で使用するデータとメソッドを定義する関数
 function serviceListPage() {
-    // Debug: この関数が呼び出されているか確認
     console.log('serviceListPage function called, initializing data...');
 
-    // serviceForms.js からフォームの状態とメソッドを取得
     const forms = serviceFormLogic();
 
     return {
         // === State properties ===
-        // フォーム関連の状態は forms オブジェクトに含まれる
-        ...forms, // <<< serviceFormLogic から返されるプロパティとメソッドを展開して追加
+        ...forms,
 
         isDrawerOpen: false,
 
         showAddModal: false,
         showEditModal: false,
         showGuideModal: false,
-        // 削除確認モーダルの状態と削除対象サービス
         showDeleteConfirmModal: false,
-        serviceToDelete: null, // 削除対象のサービスデータを保持
-        // editingService は openModal で設定され、API呼び出しやバリデーションで使用するため app.js に残す
+        serviceToDelete: null,
         editingService: null,
 
-        // トースト通知の状態とメッセージ
         showToast: false,
         toastMessage: '',
         toastType: null,
 
-        // iCalフィード関連の状態プロパティ
         userIcalUrl: '',
 
-        services: [], // 初期状態は空にする
+        services: [], // ページごとのサービスデータ
 
-        // ソートの状態
+        // === ページネーション関連のプロパティを追加 ===
+        pagination: {
+            current_page: 1, // 現在のページ番号
+            last_page: 1,    // 最終ページ番号
+            total: 0,        // 総アイテム数
+            per_page: 15,    // 1ページあたりの表示件数
+            links: [],       // ページネーションリンクの配列 (Laravelのフォーマットを想定)
+            // first_page_url, last_page_url, next_page_url, prev_page_url なども含まれる
+        },
+        // ===============================================
+
+        // ソートの状態 (バックエンドでソートする場合は、これらのプロパティをAPIリクエストに含めるように変更が必要)
         sortBy: 'notification_date',
         sortDirection: 'asc',
 
@@ -66,23 +70,51 @@ function serviceListPage() {
 
         // === Methods ===
 
-        // サービスのデータをバックエンドから取得するメソッド
-        async fetchServices() {
+        // サービスのデータをバックエンドから取得するメソッド (ページネーション対応)
+        // page パラメータを追加
+        async fetchServices(page = 1) { // デフォルトページを1に設定
             this.isLoading = true;
-            this.loadingMessage = 'サービスを読み込み中...';
-            try {
-                const fetchedServices = await fetchServicesApi();
+            this.loadingMessage = `サービスを読み込み中 (ページ ${page})...`; // ロードメッセージにページ番号を含める
 
-                this.services = fetchedServices.map(service => {
+            try {
+                // serviceApi.js からインポートした関数を呼び出す
+                // API呼び出し関数にページ番号を渡すように修正が必要 (次の serviceApi.js の修正で行います)
+                // 現状はまだページ番号を渡していません
+                const response = await fetchServicesApi(page); // <-- page を渡すように変更予定
+
+                // APIレスポンス全体 (データ + ページネーション情報) を受け取るように変更
+                // serviceApi.js の fetchServicesApi 関数も修正が必要になります
+                // const fetchedServices = response.data; // サービスデータは response.data に含まれると想定
+
+                // 取得したデータとページネーション情報をそれぞれのプロパティにセット
+                this.services = response.data.map(service => { // response.data がサービスデータ配列
                     return {
                         ...service,
                         notification_timing: parseInt(service.notification_timing, 10)
                     };
                 });
-                console.log('サービス一覧を正常に取得しました', this.services);
+                // ページネーション情報をセット
+                // response には current_page, last_page, total, per_page, links などが含まれる
+                this.pagination = {
+                    current_page: response.current_page,
+                    last_page: response.last_page,
+                    total: response.total,
+                    per_page: response.per_page,
+                    links: response.links, // ページネーションリンクの配列
+                    // 必要に応じて他のプロパティも追加: first_page_url, last_page_url, next_page_url, prev_page_url
+                    first_page_url: response.first_page_url,
+                    last_page_url: response.last_page_url,
+                    next_page_url: response.next_page_url,
+                    prev_page_url: response.prev_page_url,
+                };
 
-                // 取得後にフロントエンドでソートを適用
+
+                console.log('サービス一覧とページネーション情報を正常に取得しました', this.services, this.pagination);
+
+                // 取得後にフロントエンドでソートを適用 (バックエンドでソートする場合はこの行は不要)
+                // ページネーション後のデータに対してソートを適用
                 this.sortServices(this.sortBy, false);
+
 
             } catch (error) {
                 console.error('サービスの取得中にエラーが発生しました:', error);
@@ -96,9 +128,28 @@ function serviceListPage() {
                 }, 5000);
             } finally {
                 this.isLoading = false;
-                this.loadingMessage = 'データを読み込み中...';
+                this.loadingMessage = 'データを読み込み中...'; // メッセージを元に戻す
             }
         },
+
+        // ページを切り替えるメソッド
+        goToPage(pageUrl) {
+            if (!pageUrl || this.isLoading) {
+                return; // 無効なURLまたはロード中は処理しない
+            }
+
+            // URLからページ番号を抽出
+            const url = new URL(pageUrl);
+            const page = url.searchParams.get('page'); // URLクエリパラメータから 'page' を取得
+
+            if (page) {
+                console.log('ページ切り替え:', page);
+                this.fetchServices(parseInt(page, 10)); // 抽出したページ番号でサービスを取得
+            } else {
+                console.warn('ページURLからページ番号を抽出できませんでした:', pageUrl);
+            }
+        },
+
 
         // 認証済みユーザーの情報を取得するメソッド
         async fetchAuthenticatedUser() {
@@ -119,7 +170,7 @@ function serviceListPage() {
             }
         },
 
-        // 通知対象日の残り日数を計算する関数 (utils.js に移動することも検討可能)
+        // 通知対象日の残り日数を計算する関数
         getDaysRemaining(dateString) {
             if (!dateString || dateString.trim() === '') {
                 return Infinity;
@@ -139,7 +190,7 @@ function serviceListPage() {
             return daysDiff;
         },
 
-        // 日付をYYYY/MM/DD 形式にフォーマットする関数 (utils.js に移動することも検討可能)
+        // 日付をYYYY/MM/DD 形式にフォーマットする関数
         formatDate(dateString) {
             if (!dateString || dateString.trim() === '') {
                 return 'N/A';
@@ -155,8 +206,17 @@ function serviceListPage() {
             return `${year}/${month}/${day}`;
         },
 
-        // ソート処理を行う関数 (このロジックも services.js のようなファイルに移動することも検討可能)
+        // ソート処理を行う関数
+        // バックエンドでページネーションとソートを同時に行う場合は、
+        // このメソッドでソートキーとソート方向を状態に保持し、
+        // fetchServices を呼び出す際にそれらをパラメータとして渡すように修正が必要です。
         sortServices(key, toggleDirection = true) {
+            // バックエンドでソートする場合:
+            // 1. ソートキーと方向の状態を更新
+            // 2. fetchServices(this.pagination.current_page) を呼び出す
+            // 3. fetchServices は現在のソートキーと方向をAPIリクエストに含める
+
+            // 現状 (フロントエンドでソート):
             if (this.sortBy === key) {
                 if (toggleDirection) {
                     this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -210,7 +270,7 @@ function serviceListPage() {
             });
         },
 
-        // iCal URLをクリップボードにコピーする関数 (これも utils.js に移動することも検討可能)
+        // iCal URLをクリップボードにコピーする関数
         copyIcalUrl() {
             const urlElement = document.getElementById('ical-url');
             if (urlElement && this.userIcalUrl && this.userIcalUrl !== 'ログインすると表示されます。' && this.userIcalUrl !== 'エラーにより取得できませんでした。') {
@@ -284,6 +344,7 @@ function serviceListPage() {
                             this.editingService.notification_timing = String(this.editingService.notification_timing);
                         }
 
+
                         this.resetEditFormErrors(); // serviceForms から取得したメソッド
                         this.showEditModal = true;
                         console.log('編集モーダルを開きます', this.editingService);
@@ -351,6 +412,7 @@ function serviceListPage() {
         // サービス新規登録処理
         async addService() {
             // serviceForms から取得したメソッドでバリデーションを実行
+            // フォームデータは forms オブジェクトに含まれる addModalForm を参照
             if (!this.validateAddForm()) {
                 console.log('新規登録フォームにバリデーションエラーがあります。');
                 this.toastMessage = '入力内容に不備があります。ご確認ください。';
@@ -371,12 +433,13 @@ function serviceListPage() {
 
             try {
                 // serviceApi.js からインポートした関数を呼び出す
-                const newService = await addServiceApi(this.addModalForm);
+                // フォームデータは forms オブジェクトに含まれる addModalForm を参照
+                const newService = await addServiceApi(this.addModalForm); // this.addModalForm にアクセス
                 console.log('新しいサービスを正常に登録しました', newService);
 
-                await this.fetchServices(); // サービス一覧を再取得
+                await this.fetchServices(this.pagination.current_page); // 現在のページを再取得
 
-                this.closeModals(); // 新規登録モーダルを閉じる
+                this.closeModals();
                 this.toastMessage = '新しいサービスを追加しました！';
                 this.toastType = 'success';
                 this.showToast = true;
@@ -419,7 +482,8 @@ function serviceListPage() {
             }
 
             // serviceForms から取得したメソッドでバリデーションを実行
-            if (!this.validateEditForm(this.editingService)) { // editingService を引数として渡す
+            // editingService を引数として渡す
+            if (!this.validateEditForm(this.editingService)) {
                 console.log('編集フォームにバリデーションエラーがあります。');
                 this.toastMessage = '入力内容に不備があります。ご確認ください。';
                 this.toastType = 'error';
@@ -439,12 +503,13 @@ function serviceListPage() {
 
             try {
                 // serviceApi.js からインポートした関数を呼び出す
+                // editingService のIDとデータを渡す
                 const updatedService = await saveServiceApi(this.editingService.id, this.editingService);
                 console.log('サービスを正常に保存しました', updatedService);
 
-                await this.fetchServices(); // サービス一覧を再取得
+                await this.fetchServices(this.pagination.current_page); // 現在のページを再取得
 
-                this.closeModals(); // 編集モーダルを閉じる
+                this.closeModals();
                 this.toastMessage = 'サービスを保存しました！';
                 this.toastType = 'success';
                 this.showToast = true;
@@ -496,7 +561,10 @@ function serviceListPage() {
                 await deleteServiceApi(this.serviceToDelete.id);
                 console.log('サービスを正常に削除しました', this.serviceToDelete.id);
 
-                await this.fetchServices(); // サービス一覧を再取得
+                // 削除後、現在のページにサービスがなくなった場合に備え、
+                // 最終ページまたは前のページを再取得するか検討
+                // 今回はシンプルに現在のページを再取得
+                await this.fetchServices(this.pagination.current_page);
 
                 this.showDeleteConfirmModal = false;
                 this.serviceToDelete = null;
@@ -532,7 +600,8 @@ function serviceListPage() {
         // ページの初期化処理としてサービス取得を呼び出す
         init() {
             console.log('Alpine component initialized');
-            this.fetchServices();
+            // 初期表示時に1ページ目を読み込む
+            this.fetchServices(1);
             this.fetchAuthenticatedUser();
         },
     }

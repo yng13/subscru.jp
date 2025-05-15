@@ -7,49 +7,44 @@ function getCsrfToken() {
 }
 
 // API レスポンスのエラー（特に認証エラー）をハンドリングする共通関数
-// Alpine.js のコンテキストから独立させるため、エラーメッセージの表示は呼び出し元で行うように変更
 async function handleApiResponse(response) {
-    // レスポンスのステータスコードをチェック
     if (!response.ok) {
-        // 認証エラー (401 Unauthorized) の場合、ログイン画面にリダイレクト
         if (response.status === 401) {
-            // console.log('DEBUG: 401 Unauthorized. Redirecting to login.');
-            window.location.href = '/login'; // Fortify のログインルートにリダイレクト
-            // エラーハンドリングを中断
-            throw new Error('認証されていません。ログインしてください。'); // エラーをスロー
+            window.location.href = '/login';
+            throw new Error('認証されていません。ログインしてください。');
         }
 
-        // その他のエラーレスポンスの場合
         const error = await response.json();
-        // console.error('API Error:', error);
-        // エラーメッセージを返す (またはスロー)
-        throw new Error(error.message || `APIリクエスト中にエラーが発生しました (${response.status})。`); // エラーをスロー
+        throw new Error(error.message || `APIリクエスト中にエラーが発生しました (${response.status})。`);
     }
 
-    // 成功レスポンスの場合はそのままレスポンスオブジェクトを返す
-    return response;
+    // 成功レスポンスの場合、JSONとしてパースして返す
+    // ページネーション情報はボディに含まれるため、ここでパースして呼び出し元に渡す
+    return response.json(); // ここで response.json() を呼び出す
 }
 
-// サービス一覧を取得するAPI呼び出し関数
-export async function fetchServicesApi() {
+
+// サービス一覧を取得するAPI呼び出し関数 (ページネーション対応)
+// page パラメータを受け取るように修正
+export async function fetchServicesApi(page = 1) { // デフォルト値を1に設定
     try {
-        const response = await fetch('/api/services', {
+        // APIエンドポイントURLにページ番号をクエリパラメータとして追加
+        // 例: /api/services?page=2
+        const response = await fetch(`/api/services?page=${page}`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
-                // Sanctum stateful 認証には CSRF トークンが必要です (GETリクエストでは必須ではないが含めても良い)
-                'X-CSRF-TOKEN': getCsrfToken()
+                'X-CSRF-TOKEN': getCsrfToken() // GETでも含めるのが安全
             }
         });
 
-        // 共通のエラーハンドリング関数を使用
-        const handledResponse = await handleApiResponse(response);
+        // 共通のエラーハンドリング関数を使用し、JSONレスポンスを直接返す
+        // handleApiResponse 関数内で response.json() が呼び出されるようになりました
+        const data = await handleApiResponse(response); // response.json() の結果が data に入る
 
-        // JSON形式でレスポンスボディを取得
-        const data = await handledResponse.json();
-
-        // サービスデータのみを返す
-        return data.services;
+        // Laravel の paginate() メソッドのレスポンス構造を想定
+        // data オブジェクト全体を返す (データ配列とページネーション情報を含む)
+        return data;
 
     } catch (error) {
         console.error('Failed to fetch services in API module:', error);
@@ -64,14 +59,12 @@ export async function fetchAuthenticatedUserApi() {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
-                // Sanctum stateful 認証には CSRF トークンが必要です
                 'X-CSRF-TOKEN': getCsrfToken()
             }
         });
 
-        const handledResponse = await handleApiResponse(response);
-
-        const data = await handledResponse.json(); // レスポンス全体を取得
+        // handleApiResponse 関数内で response.json() が呼び出されるようになりました
+        const data = await handleApiResponse(response); // response.json() の結果が data に入る
 
         // ユーザー情報とiCalフィードURLを返す
         return {
@@ -81,7 +74,7 @@ export async function fetchAuthenticatedUserApi() {
 
     } catch (error) {
         console.error('Failed to fetch authenticated user in API module:', error);
-        throw error; // エラーを呼び出し元に再スロー
+        throw error;
     }
 }
 
@@ -94,7 +87,7 @@ export async function addServiceApi(formData) {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'X-CSRF-TOKEN': getCsrfToken() // CSRFトークンを含める
+                'X-CSRF-TOKEN': getCsrfToken()
             },
             body: JSON.stringify({
                 name: formData.name,
@@ -103,19 +96,18 @@ export async function addServiceApi(formData) {
                 notification_timing: parseInt(formData.notification_timing, 10),
                 memo: formData.memo,
                 // category_icon はフォームにないので含めないか、デフォルト値をバックエンドで設定
+                // バックエンドのServiceController::storeでcategory_iconのバリデーションとデフォルト値が設定されているため、ここでは含めなくてもOK
             })
         });
 
-        // 共通のエラーハンドリング関数を使用
-        const handledResponse = await handleApiResponse(response);
+        // handleApiResponse 関数内で response.json() が呼び出されるようになりました
+        const result = await handleApiResponse(response); // response.json() の結果が result に入る
 
-        // 成功レスポンスの場合、作成されたサービスデータを返す
-        const result = await handledResponse.json();
-        return result.service; // 作成されたサービスオブジェクトを返す
+        return result.service;
 
     } catch (error) {
         console.error('Failed to add service in API module:', error);
-        throw error; // エラーを呼び出し元に再スロー
+        throw error;
     }
 }
 
@@ -127,7 +119,7 @@ export async function saveServiceApi(serviceId, formData) {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'X-CSRF-TOKEN': getCsrfToken() // CSRFトークンを含める
+                'X-CSRF-TOKEN': getCsrfToken()
             },
             body: JSON.stringify({
                 name: formData.name,
@@ -135,20 +127,18 @@ export async function saveServiceApi(serviceId, formData) {
                 notification_date: formData.notification_date,
                 notification_timing: parseInt(formData.notification_timing, 10),
                 memo: formData.memo,
-                category_icon: formData.category_icon, // 編集では category_icon も更新可能とする場合
+                category_icon: formData.category_icon,
             })
         });
 
-        // 共通のエラーハンドリング関数を使用
-        const handledResponse = await handleApiResponse(response);
+        // handleApiResponse 関数内で response.json() が呼び出されるようになりました
+        const result = await handleApiResponse(response); // response.json() の結果が result に入る
 
-        // 成功レスポンスの場合、更新後のサービスデータを返す
-        const result = await handledResponse.json();
-        return result.service; // 更新後のサービスオブジェクトを返す
+        return result.service;
 
     } catch (error) {
         console.error('Failed to save service in API module:', error);
-        throw error; // エラーを呼び出し元に再スロー
+        throw error;
     }
 }
 
@@ -159,20 +149,21 @@ export async function deleteServiceApi(serviceId) {
             method: 'DELETE',
             headers: {
                 'Accept': 'application/json',
-                'X-CSRF-TOKEN': getCsrfToken() // CSRFトークンを含める
+                'X-CSRF-TOKEN': getCsrfToken()
             }
         });
 
-        // 共通のエラーハンドリング関数を使用
-        const handledResponse = await handleApiResponse(response);
+        // handleApiResponse 関数内で response.json() が呼び出されるようになりました
+        // 削除APIは通常成功してもボディがないことが多いが、handleApiResponse は json() を返すため
+        // レスポンスボディがない場合はエラーにならないように handleApiResponse を少し調整するか、
+        // ここで response.json() を削除して handleApiResponse の戻り値を調整する
+        // 今回は handleApiResponse の戻り値をそのまま使い、ボディがなくてもエラーにならないようにする
+        const result = await handleApiResponse(response); // response.json() の結果が result に入る (空オブジェクトなど)
 
-        // 削除APIは通常成功してもボディがないことが多いので、ここでは成功ステータスのみ確認
-        // 必要に応じてレスポンスボディをパースしても良い
-        // const result = await handledResponse.json();
         return true; // 成功した場合は true を返す
 
     } catch (error) {
         console.error('Failed to delete service in API module:', error);
-        throw error; // エラーを呼び出し元に再スロー
+        throw error;
     }
 }
