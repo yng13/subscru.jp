@@ -72,6 +72,27 @@ function serviceListPage() {
         getDaysRemaining: getDaysRemaining,
         formatDate: formatDate,
 
+        clearSearchTerm() {
+            console.log('検索キーワードをクリアします');
+            this.searchTerm = ''; // 検索キーワードを空にする
+            // 検索キーワードがクリアされた状態でサービス一覧を再取得 (1ページ目に戻る)
+            // fetchServices メソッドは既に searchTerm を引数として受け取ります
+            this.fetchServices(1, this.sortBy, this.sortDirection, this.searchTerm);
+        },
+
+        // === ページネーションのサマリーテキストを生成する算出プロパティ ===
+        get paginationSummary() {
+            // ロード中は空文字列を返す（表示しない）
+            if (this.isLoading) {
+                return '';
+            }
+            // サービスが0件の場合は、サービス一覧エリアに表示されるメッセージに任せるので、ここでも空文字列を返す
+            if (this.pagination.total === 0) {
+                return ''; // または「サービスはまだ登録されていません」というメッセージをここにも含めるか検討（今回は不要）
+            }
+            // 「全〇件のうち 〇/〇 ページ目を表示」形式の文字列を生成
+            return `全 ${this.pagination.total} 件 ${this.pagination.current_page} / ${this.pagination.last_page} ページ目を表示`;
+        },
 
         // === Methods ===
 

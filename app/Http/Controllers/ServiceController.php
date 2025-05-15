@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Service;
 
-// Service モデルが存在する場合
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -58,7 +57,8 @@ class ServiceController extends Controller
 
 
         // ページネーションを適用
-        $perPage = $request->query('per_page', 15); // デフォルト15件
+        // $perPage = $request->query('per_page', 10); // デフォルト10件に変更
+        $perPage = $request->query('pp', 10); // パラメータ名を 'pp' に変更し、デフォルト10件 <--- ここを修正
         $services = $query->paginate($perPage);
 
 
@@ -88,9 +88,9 @@ class ServiceController extends Controller
                 'name' => $validatedData['name'],
                 'type' => $validatedData['type'],
                 'notification_date' => $validatedData['notification_date'],
-                'notification_timing' => $validatedData['notification_timing'] ?? 0,
+                'notification_timing' => $validatedData['notification_timing'] ?? 0, // 通知タイミングのデフォルト値
                 'memo' => $validatedData['memo'] ?? null,
-                'category_icon' => $validatedData['category_icon'] ?? 'fas fa-question-circle',
+                'category_icon' => $validatedData['category_icon'] ?? 'fas fa-question-circle', // デフォルトアイコン
             ]);
 
             return response()->json([

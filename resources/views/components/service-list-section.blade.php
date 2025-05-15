@@ -3,26 +3,7 @@
 <section class="bg-white p-6 rounded-lg shadow mb-8">
     <h1 class="text-2xl font-semibold text-gray-900 mb-6">サービス一覧</h1>
 
-    {{-- Debug: Display service count --}}
-    {{-- ロード中は非表示 --}}
-    {{-- 総件数 (pagination.total) を表示するように変更 --}}
-    <p x-text="'Services count: ' + pagination.total" class="mb-4 text-sm text-gray-600"
-       x-show="!isLoading && pagination.total > 0"></p>
-
-    {{-- === 検索入力フィールドを追加 === --}}
-    <div class="mb-4">
-        <label for="search" class="sr-only">サービスを検索</label>
-        <input type="text" id="search" placeholder="サービス名で検索..."
-               class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
-               x-model="searchTerm"
-               @input.debounce.500="fetchServices(1, sortBy, sortDirection, $event.target.value)"
-        >
-    </div>
-    {{-- ============================== --}}
-
     {{-- === ローディング中またはサービスがない場合のメッセージエリア === --}}
-    {{-- このコンテナに固定高さを設定し、中の要素を表示/非表示する --}}
-    {{-- x-show で、ロード中 OR (ロードが完了していてかつサービスが0件) の場合に表示 --}}
     <div class="text-center text-blue-600 text-lg font-semibold py-8 h-20 flex items-center justify-center"
          x-show="isLoading || (!isLoading && pagination.total === 0)">
         {{-- ロード中の表示 --}}
@@ -36,9 +17,33 @@
     </div>
     {{-- =============================================================== --}}
 
+    {{-- === 検索入力フィールドとクリアボタンのエリア === --}}
+    {{-- input フィールドを relative 親要素にする --}}
+    <div class="mb-4 relative"> {{-- input を囲む div に relative を設定 --}}
+        <label for="search" class="sr-only">サービスを検索</label>
+        {{-- input 自体は relative なし、w-full で親要素いっぱいに広がる --}}
+        <input type="text" id="search" placeholder="サービス名で検索..."
+               class="w-full p-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
+               {{-- input 自体に pr-8 で右側の余白を確保 --}}
+               x-model="searchTerm"
+               @input.debounce.500="fetchServices(1, sortBy, sortDirection, $event.target.value)"
+        >
+        {{-- クリアボタン (テキストが入力されている場合のみ表示) --}}
+        {{-- absolute inset-y-0 right-0 で input の右端中央に配置 --}}
+        {{-- px-2 でクリック可能な領域を確保 --}}
+        <button type="button"
+                class="absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                x-show="searchTerm !== ''" {{-- searchTermが空でない場合に表示 --}}
+                @click="clearSearchTerm()" {{-- クリックで searchTerm をクリアするメソッドを呼び出す --}}
+                aria-label="検索キーワードをクリア"
+        >
+            <i class="fas fa-times-circle"></i> {{-- Font Awesome のバツアイコン --}}
+        </button>
+    </div>
+    {{-- ========================================== --}}
+
 
     {{-- サービスリストヘッダー (PC版のみ表示) --}}
-    {{-- ロード中に関わらず常に表示されるように x-show="!isLoading" は削除済み --}}
     <div
         class="service-list-header hidden md:flex bg-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
         <div class="cursor-pointer hover:bg-gray-200 flex items-center py-3" @click="sortServices('name')"
@@ -68,7 +73,6 @@
 
 
     {{-- === サービスリスト本体 === --}}
-    {{-- ロードが完了していて、かつサービスが1件以上ある場合にのみ表示 --}}
     <div class="service-list grid grid-cols-1 gap-4 md:gap-0 md:flex md:flex-col divide-y divide-gray-200"
          x-show="!isLoading && pagination.total > 0">
         <template x-for="service in services" :key="service.id">
@@ -91,7 +95,7 @@
                 <div
                     class="mb-2 md:mb-0 md:py-4 md:px-6 notification-text flex flex-row items-center md:flex-col md:items-start">
                     <span class="md:hidden font-semibold mr-2">通知対象日:</span>
-                    <span class="space-x-2">
+                    <span class="space-x-2 md:flex md:flex-col"> {{-- md:flex md:flex-col を追加 --}}
                         <span x-text="formatDate(service.notification_date)"></span>
                         <span x-text="'(あと ' + getDaysRemaining(service.notification_date) + ' 日)'"></span>
                     </span>
@@ -107,19 +111,27 @@
 
 
     {{-- ページネーションリンクを動的に生成 --}}
-    {{-- サービスが1ページに収まらない場合のみ表示 (pagination.last_page > 1) --}}
-    <div class="pagination flex justify-center items-center mt-8" x-show="!isLoading && pagination.last_page > 1">
-        <template x-for="(link, index) in pagination.links" :key="index">
-            <a href="#"
-               class="page-link px-4 py-2 mx-1 border rounded-md text-gray-700 hover:bg-gray-200"
-               :class="{
-                    'border-blue-500 bg-blue-500 text-white pointer-events-none hover:bg-blue-500': link.active,
-                    'border-gray-300': !link.active,
-                    'pointer-events-none opacity-50': !link.url
-               }"
-               x-text="link.label === 'pagination.previous' ? '前へ' : (link.label === 'pagination.next' ? '次へ' : link.label)"
-               @click.prevent="goToPage(link.url)"
-            ></a>
+    <div class="pagination flex flex-col sm:flex-row justify-center items-center mt-8"
+         x-show="!isLoading && pagination.total > 0">
+        {{-- 件数とページ情報の表示 --}}
+        <span class="text-sm text-gray-600 mb-4 sm:mb-0 sm:mr-4" x-text="paginationSummary"></span>
+
+        {{-- ページネーションリンク本体 --}}
+        <template x-if="pagination.last_page > 1">
+            <div class="flex items-center"> {{-- ページネーションリンクの wrapper --}}
+                <template x-for="(link, index) in pagination.links" :key="index">
+                    <a href="#"
+                       class="page-link px-4 py-2 mx-1 border rounded-md text-gray-700 hover:bg-gray-200"
+                       :class="{
+                            'border-blue-500 bg-blue-500 text-white pointer-events-none hover:bg-blue-500': link.active,
+                            'border-gray-300': !link.active,
+                            'pointer-events-none opacity-50': !link.url
+                       }"
+                       x-text="link.label === 'pagination.previous' ? '前へ' : (link.label === 'pagination.next' ? '次へ' : link.label)"
+                       @click.prevent="goToPage(link.url)"
+                    ></a>
+                </template>
+            </div>
         </template>
     </div>
 

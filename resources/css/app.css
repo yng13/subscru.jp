@@ -4,6 +4,8 @@
 /* ビルドプロセスで Tailwind の基本スタイル、コンポーネント、ユーティリティに展開されます */
 @import "tailwindcss";
 
+@import "@fortawesome/fontawesome-free/css/all.css";
+
 /* ここにプロジェクト固有のカスタムCSSルールを記述します */
 /* @apply を使用すると、Tailwind のユーティリティクラスをカスタムルールに組み込めます */
 
