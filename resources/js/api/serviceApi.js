@@ -23,9 +23,9 @@ async function handleApiResponse(response) {
 }
 
 
-// サービス一覧を取得するAPI呼び出し関数 (ページネーション & ソート対応)
-// page, sortBy, sortDirection パラメータを受け取る
-export async function fetchServicesApi(page = 1, sortBy = 'notification_date', sortDirection = 'asc') { // デフォルト値を設定
+// サービス一覧を取得するAPI呼び出し関数 (ページネーション & ソート & 検索対応)
+// page, sortBy, sortDirection, searchTerm パラメータを受け取る
+export async function fetchServicesApi(page = 1, sortBy = 'notification_date', sortDirection = 'asc', searchTerm = '') { // searchTerm 引数を追加し、デフォルト値を設定
     try {
         // === クエリパラメータを生成 (短いパラメータ名を使用) ===
         const queryParams = new URLSearchParams();
@@ -33,9 +33,14 @@ export async function fetchServicesApi(page = 1, sortBy = 'notification_date', s
         // ソートパラメータを追加 (短い名前 'sb' と 'sd' を使用)
         queryParams.append('sb', sortBy);
         queryParams.append('sd', sortDirection);
+        // === 検索キーワードパラメータを追加 (短い名前 'q' を使用) ===
+        if (searchTerm) { // 検索キーワードが空でない場合のみ追加
+            queryParams.append('q', searchTerm);
+        }
+        // ==================================================
 
         // APIエンドポイントURLにクエリ文字列を追加
-        // 例: /api/services?page=1&sb=name&sd=desc
+        // 例: /api/services?page=1&sb=name&sd=desc&q=keyword
         const url = `/api/services?${queryParams.toString()}`;
         // ==================================================
 
@@ -56,6 +61,8 @@ export async function fetchServicesApi(page = 1, sortBy = 'notification_date', s
         throw error;
     }
 }
+
+// ... 他のAPI関数 (fetchAuthenticatedUserApi, addServiceApi, saveServiceApi, deleteServiceApi) は変更なし ...
 
 // 認証済みユーザー情報を取得するAPI呼び出し関数
 export async function fetchAuthenticatedUserApi() {

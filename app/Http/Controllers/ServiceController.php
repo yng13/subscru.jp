@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 class ServiceController extends Controller
 {
     /**
-     * サービス一覧を取得するAPI (ページネーション & ソート対応)
+     * サービス一覧を取得するAPI (ページネーション & ソート & 検索対応)
      *
      * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -21,6 +21,16 @@ class ServiceController extends Controller
     {
         // 認証済みのユーザーに紐づくサービスのみを取得
         $query = Auth::user()->services();
+
+        // === 検索キーワードのクエリパラメータを処理 (パラメータ名を短縮) ===
+        // パラメータ名を 'q' (query) に変更
+        $searchTerm = $request->query('q');
+
+        // 検索キーワードが存在する場合、サービス名で絞り込み (部分一致)
+        if ($searchTerm) {
+            $query->where('name', 'like', '%' . $searchTerm . '%');
+        }
+        // =========================================================
 
         // === ソートのクエリパラメータを処理 (パラメータ名を短縮) ===
         // パラメータ名を 'sb' (sortBy) と 'sd' (sortDirection) に変更
@@ -55,6 +65,8 @@ class ServiceController extends Controller
         // 取得したサービスデータとページネーション情報をJSON形式で返す
         return response()->json($services, 200);
     }
+
+    // ... 他のメソッド (store, show, update, destroy) は変更なし ...
 
     /**
      * Store a newly created resource in storage.

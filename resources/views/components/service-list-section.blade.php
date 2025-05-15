@@ -9,6 +9,19 @@
     <p x-text="'Services count: ' + pagination.total" class="mb-4 text-sm text-gray-600"
        x-show="!isLoading && pagination.total > 0"></p>
 
+    {{-- === 検索入力フィールドを追加 === --}}
+    {{-- x-model="searchTerm" で入力値を Alpine.js の searchTerm プロパティにバインド --}}
+    {{-- @input="fetchServices(1, sortBy, sortDirection)" で入力があるたびにサービスを再取得 (必要に応じて調整) --}}
+    <div class="mb-4">
+        <label for="search" class="sr-only">サービスを検索</label> {{-- アクセシビリティのためにラベルを追加し、非表示にする --}}
+        <input type="text" id="search" placeholder="サービス名で検索..."
+               class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200"
+               x-model="searchTerm"
+               @input.debounce.500="fetchServices(1, sortBy, sortDirection)" {{-- 入力終了500ms後に検索実行 --}}
+        >
+    </div>
+    {{-- ============================== --}}
+
     {{-- ロード中の表示 --}}
     <div x-show="isLoading" class="text-center text-blue-600 text-lg font-semibold py-8">
         <i class="fas fa-spinner fa-spin mr-2"></i> <span x-text="loadingMessage"></span>
