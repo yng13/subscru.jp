@@ -1,3 +1,4 @@
+{{-- resources/views/components/header.blade.php --}}
 {{-- fixed top-0 left-0 w-full bg-white shadow-md z-50 はPC/スマホ共通 --}}
 <header class="fixed top-0 left-0 w-full bg-white shadow-md z-50">
     <div class="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -11,15 +12,23 @@
             </button>
         </div>
         {{-- PC版ではここは空になるか、必要に応じて要素を追加 --}}
-        <div class="flex-1 flex items-center hidden md:flex"></div> {{-- hidden md:flex でPC版のみ表示 --}}
+        {{-- === ここを修正 - PC版で Flex アイテムとして振る舞い、ロゴの左側にスペースを確保 === --}}
+        <div class="flex-1 flex items-center hidden md:flex"></div>
+        {{-- ============================================================= --}}
 
 
         {{-- 中央の要素 (サイトロゴ) --}}
         {{-- スマホ版ではflex-grow text-center で中央寄せ、PC版ではデフォルトの配置 --}}
+        {{-- === ここを修正 - PC版では中央寄せを解除し、flex-grow-0 を明示的に指定 === --}}
         <div
-            class="site-logo text-xl md:text-2xl font-bold text-blue-500 flex-grow text-center md:flex-grow-0 md:text-left">
+            class="site-logo text-xl md:text-2xl font-bold text-blue-500
+            flex-grow text-center
+            md:flex-grow-0 md:text-left"
+        >
             Subscru
         </div>
+        {{-- ======================================================= --}}
+
 
         {{-- 右側の要素 (ユーザー情報 / ログイン・登録リンク) --}}
         <div class="flex-1 flex justify-end items-center">

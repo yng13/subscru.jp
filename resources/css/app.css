@@ -96,6 +96,22 @@ nav button:focus-visible {
     outline-offset: 2px; /* 要素から2px離して表示 */
 }
 
+/* === 日付入力フィールドのカスタムスタイル === */
+input[type="date"] {
+    /* デフォルトの見た目をリセット */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    /* ブラウザによっては背景にカレンダーアイコンが表示される場合があるため非表示に */
+    background-image: none;
+    /* 必要に応じて追加のリセットスタイル */
+}
+
+/* Tailwind CSS のクラスを適用 */
+input[type="date"] {
+    @apply w-full p-2 border rounded-md focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-200;
+}
+
 /* PC向け (md: ブレークポイント以上) 固有のスタイル調整 */
 @media (min-width: 768px) {
     /* PC版でのモーダル位置に関するスタイル (アニメーション削除により不要となったもの) */
@@ -166,10 +182,10 @@ nav button:focus-visible {
 /* 幅指定などは @media (min-width: 768px) の中に移動したため、ここでは特定の解除スタイルは不要 */
 /* スマホでは HTML に記述された Tailwind クラス (flex-col, w-full など) が適用されます */
 
-
 /* ボディタグのパディング調整 */
 /* スマホ版ヘッダー固定のため、上部にパディングを設けます */
 body {
+    font-family: source-sans-pro, fot-udkakugo-large-pr6n, Meiryo, 'Yu Gothic', 'Hiragino Sans', sans-serif;
     padding-top: 56px; /* スマホ版ヘッダーの高さ (14 units * 4px = 56px) */
 }
 

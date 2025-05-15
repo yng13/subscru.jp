@@ -7,10 +7,13 @@ import intersect from '@alpinejs/intersect';
 // API 呼び出し関数をインポート
 import {
     fetchServicesApi,
-    fetchAuthenticatedUserApi, // fetchAuthenticatedUserApi も使用するためインポートを維持
+    fetchAuthenticatedUserApi,
     addServiceApi,
     saveServiceApi,
-    deleteServiceApi
+    deleteServiceApi,
+    // === ここを修正 ===
+    getCsrfToken // getCsrfToken 関数をインポートリストに追加
+    // ====================
 } from './api/serviceApi';
 
 // フォームロジック関数をインポート
@@ -25,10 +28,9 @@ import {sortingLogic} from './utils/sorting';
 // トースト通知ロジック関数をインポート
 import {notificationLogic} from './utils/notification';
 
-// === 新しく作成した modalLogic と icalLogic をインポート ===
+// モーダル関連と iCal 関連のロジックをインポート
 import {modalLogic} from './utils/modal';
 import {icalLogic} from './utils/ical';
-// ======================================================
 
 
 // Alpine.js プラグインの登録
@@ -42,9 +44,9 @@ function serviceListPage() {
     // 各ロジックオブジェクトを生成
     const forms = serviceFormLogic();
     const notification = notificationLogic();
-    const sorting = sortingLogic(); // sortingLogic はもう fetchServicesCallback を受け取らない
-    const modal = modalLogic(); // === modalLogic を生成 ===
-    const ical = icalLogic(); // === icalLogic を生成 ===
+    const sorting = sortingLogic();
+    const modal = modalLogic();
+    const ical = icalLogic();
 
 
     return {
@@ -52,22 +54,11 @@ function serviceListPage() {
         ...forms,
         ...notification,
         ...sorting,
-        ...modal, // modalLogic のプロパティとメソッドを追加
-        ...ical, // icalLogic のプロパティとメソッドを追加
+        ...modal,
+        ...ical,
         // ===============================================================
 
         isDrawerOpen: false,
-
-        // modalLogic に移動したので削除
-        // showAddModal: false,
-        // showEditModal: false,
-        // showGuideModal: false,
-        // showDeleteConfirmModal: false,
-        // serviceToDelete: null,
-        // editingService: null,
-
-        // icalLogic に移動したので削除
-        // userIcalUrl: '',
 
         services: [],
 
@@ -78,20 +69,21 @@ function serviceListPage() {
 
         searchTerm: '',
 
-        // utils/datetime.js からインポートした関数はそのままメソッドとして残す
         getDaysRemaining: getDaysRemaining,
         formatDate: formatDate,
 
 
         // === Methods ===
 
-        // fetchServices メソッドは app.js に残し、他のロジックから呼び出される中心的な役割を持つ
-        // searchTerm 引数を維持
         async fetchServices(page = this.pagination.current_page, sortBy = this.sortBy, sortDirection = this.sortDirection, searchTerm = this.searchTerm) {
-            if (this.isLoading) return;
+            console.log('fetchServices: メソッド開始');
+            if (this.isLoading) {
+                console.log('fetchServices: isLoading が true のため早期リターン');
+                return;
+            }
 
             this.isLoading = true;
-            this.loadingMessage = `サービスを読み込み中 (ページ ${page})...`;
+            this.loadingMessage = 'サービスを読み込み中...';
 
             const url = new URL(window.location);
             url.searchParams.set('page', page);
@@ -102,39 +94,51 @@ function serviceListPage() {
             } else {
                 url.searchParams.delete('q');
             }
-            history.pushState({}, '', url);
+            // URLの更新は fetchServicesApi の中で行う方が責務が分かれるかもしれないですが、
+            // 現在の設計を踏襲し、ここで history API を使用します。
+            // fetchServicesApi は純粋なAPI呼び出しロジックに集中させ、
+            // URL更新や Alpine.js 状態更新は app.js で行うのが良いでしょう。
+            history.pushState({}, '', url); // fetchServicesApi の前に移動
 
+            // API呼び出し時に searchTerm を渡す (serviceApi.js は既に修正済み)
+            // fetchServicesApi に CSRF トークンは渡しません。serviceApi.js の内部で取得します。
             try {
-                // API呼び出し時に searchTerm を渡す (serviceApi.js は既に修正済み)
-                const response = await fetchServicesApi(page, sortBy, sortDirection, searchTerm);
+                console.log('fetchServices: fetchServicesApi を呼び出します'); // 確認用ログ
+                // URLSearchParams から直接文字列を渡すのではなく、fetchServicesApi 内でクエリパラメータを構築するように戻します
+                // これは前の修正で誤って fetchServices 内でURLSearchParamsを文字列化して渡すように変更したためです。
+                // fetchServicesApi にはページ番号、ソート情報、検索キーワードを引数として渡します。
+                const responseData = await fetchServicesApi(page, sortBy, sortDirection, searchTerm); // serviceApi.js 内でURL構築と fetch を行う
 
-                this.services = response.data.map(service => {
+                console.log('fetchServices: fetchServicesApi 呼び出し完了'); // 確認用ログ
+
+
+                this.services = responseData.data.map(service => {
                     return {
                         ...service,
                         notification_timing: parseInt(service.notification_timing, 10)
                     };
                 });
                 this.pagination = {
-                    current_page: response.current_page,
-                    last_page: response.last_page,
-                    total: response.total,
-                    per_page: response.per_page,
-                    links: response.links,
-                    first_page_url: response.first_page_url,
-                    last_page_url: response.last_page_url,
-                    next_page_url: response.next_page_url,
-                    prev_page_url: response.prev_page_url,
+                    current_page: responseData.current_page,
+                    last_page: responseData.last_page,
+                    total: responseData.total,
+                    per_page: responseData.per_page,
+                    links: responseData.links,
+                    first_page_url: responseData.first_page_url,
+                    last_page_url: responseData.last_page_url,
+                    next_page_url: responseData.next_page_url,
+                    prev_page_url: responseData.prev_page_url,
                 };
 
                 console.log('サービス一覧とページネーション情報を正常に取得しました', this.services, this.pagination);
 
             } catch (error) {
                 console.error('サービスの取得中にエラーが発生しました:', error);
-                // notificationLogic の showToastNotification を呼び出し
                 this.showToastNotification(error.message || 'サービスの取得中にエラーが発生しました。', 'error', 5000);
             } finally {
                 this.isLoading = false;
                 this.loadingMessage = 'データを読み込み中...';
+                console.log('fetchServices: メソッド終了'); // 確認用ログ
             }
         },
 
@@ -148,8 +152,12 @@ function serviceListPage() {
 
             if (page) {
                 console.log('ページ切り替え:', page);
-                // 現在のソート設定と検索キーワードを渡して fetchServices を呼び出す
-                this.fetchServices(parseInt(page, 10), this.sortBy, this.sortDirection, this.searchTerm);
+                // URLSearchParams から抽出したパラメータを渡す
+                const sortBy = url.searchParams.get('sb') || this.sortBy;
+                const sortDirection = url.searchParams.get('sd') || this.sortDirection;
+                const searchTerm = url.searchParams.get('q') || this.searchTerm;
+
+                this.fetchServices(parseInt(page, 10), sortBy, sortDirection, searchTerm);
             } else {
                 console.warn('ページURLからページ番号を抽出できませんでした:', pageUrl);
             }
@@ -159,11 +167,11 @@ function serviceListPage() {
         async fetchAuthenticatedUser() {
             console.log('app.js: fetchAuthenticatedUser called');
             try {
+                // fetchAuthenticatedUserApi は serviceApi.js 内で getCsrfToken を呼び出す
                 const userData = await fetchAuthenticatedUserApi();
                 if (userData && userData.icalFeedUrl) {
-                    // icalLogic の setIcalUrl メソッドを呼び出して userIcalUrl を更新
-                    this.setIcalUrl(userData.icalFeedUrl); // this は app.js の data オブジェクト全体を指す
-                    console.log('app.js: iCal URL:', this.userIcalUrl); // 更新された値を確認
+                    this.setIcalUrl(userData.icalFeedUrl);
+                    console.log('app.js: iCal URL:', this.userIcalUrl);
                 } else {
                     console.warn('app.js: Authenticated user or iCal feed URL not found.');
                     this.setIcalUrl('ログインすると表示されます。');
@@ -171,34 +179,14 @@ function serviceListPage() {
             } catch (error) {
                 console.error('app.js: 認証ユーザーまたはiCalフィードURLの取得中にエラーが発生しました:', error);
                 this.setIcalUrl('エラーにより取得できませんでした。');
-                // notificationLogic の showToastNotification を呼び出し
                 this.showToastNotification('カレンダーURLの取得中にエラーが発生しました。', 'error', 5000);
             }
         },
 
-
-        // iCal URLをクリップボードにコピーする関数は icalLogic に移動したので削除
-        // copyIcalUrl: function(...) { ... },
-
-        // モーダルを開く関数は modalLogic に移動したので削除
-        // openModal: function(...) { ... },
-
-        // モーダルを閉じる関数は modalLogic に移動したので削除
-        // closeModals: function(...) { ... },
-
-        // 削除確認モーダルを開く関数は modalLogic に移動したので削除
-        // openDeleteConfirmModal: function(...) { ... },
-
-        // 削除確認をキャンセルする関数は modalLogic に移動したので削除
-        // cancelDelete: function(...) { ... },
-
-
         // サービス新規登録処理
         async addService() {
-            // バリデーションは serviceFormLogic のメソッドを呼び出し
-            if (!this.validateAddForm()) { // forms.validateAddForm() ではなく this.validateAddForm() で呼び出し
+            if (!this.validateAddForm()) {
                 console.log('新規登録フォームにバリデーションエラーがあります。');
-                // notificationLogic の showToastNotification を呼び出し
                 this.showToastNotification('入力内容に不備があります。ご確認ください。', 'error', 5000);
                 return;
             }
@@ -208,21 +196,18 @@ function serviceListPage() {
             this.loadingMessage = 'サービスを登録中...';
 
             try {
-                // API呼び出しは serviceApi.js の関数を呼び出し
-                const newService = await addServiceApi(this.addModalForm); // forms.addModalForm ではなく this.addModalForm を渡す
+                // addServiceApi は serviceApi.js 内で getCsrfToken を呼び出す
+                const newService = await addServiceApi(this.addModalForm);
                 console.log('新しいサービスを正常に登録しました', newService);
 
                 // 登録後、サービス一覧を再取得 (現在のページ・ソート設定、現在の検索キーワードで)
                 await this.fetchServices(this.pagination.current_page, this.sortBy, this.sortDirection, this.searchTerm);
 
-                // modalLogic の closeAddModalOnSuccess を呼び出し
-                this.closeAddModalOnSuccess(); // modal.closeAddModalOnSuccess() ではなく this.closeAddModalOnSuccess() で呼び出し
-                // notificationLogic の showToastNotification を呼び出し
+                this.closeAddModalOnSuccess();
                 this.showToastNotification('新しいサービスを追加しました！', 'success', 3000);
 
             } catch (error) {
                 console.error('サービスの登録中にエラーが発生しました:', error);
-                // notificationLogic の showToastNotification を呼び出し
                 this.showToastNotification(error.message || 'サービスの登録中にエラーが発生しました。', 'error', 5000);
             } finally {
                 this.isLoading = false;
@@ -232,20 +217,15 @@ function serviceListPage() {
 
         // サービス保存/更新処理
         async saveService() {
-            // editingService は modalLogic から来ているが、app.js の state で保持されているので this.editingService でアクセス
             if (!this.editingService || !this.editingService.id) {
                 console.error('編集対象サービスが指定されていません。');
-                // notificationLogic の showToastNotification を呼び出し
                 this.showToastNotification('編集対象サービスが見つかりません。', 'error', 5000);
-                // modalLogic の closeModals を呼び出し
-                this.closeModals(); // modal.closeModals() ではなく this.closeModals() で呼び出し
+                this.closeModals();
                 return;
             }
 
-            // バリデーションは serviceFormLogic のメソッドを呼び出し (編集用)
-            if (!this.validateEditForm(this.editingService)) { // forms.validateEditForm(...) ではなく this.validateEditForm(...) で呼び出し
+            if (!this.validateEditForm(this.editingService)) {
                 console.log('編集フォームにバリデーションエラーがあります。');
-                // notificationLogic の showToastNotification を呼び出し
                 this.showToastNotification('入力内容に不備があります。ご確認ください。', 'error', 5000);
                 return;
             }
@@ -255,21 +235,18 @@ function serviceListPage() {
             this.loadingMessage = 'サービスを保存中...';
 
             try {
-                // API呼び出しは serviceApi.js の関数を呼び出し
-                const updatedService = await saveServiceApi(this.editingService.id, this.editingService); // this.editingService を渡す
+                // saveServiceApi は serviceApi.js 内で getCsrfToken を呼び出す
+                const updatedService = await saveServiceApi(this.editingService.id, this.editingService);
                 console.log('サービスを正常に保存しました', updatedService);
 
                 // 更新後、サービス一覧を再取得 (現在のページ・ソート設定、現在の検索キーワードで)
                 await this.fetchServices(this.pagination.current_page, this.sortBy, this.sortDirection, this.searchTerm);
 
-                // modalLogic の closeEditModalOnSuccess を呼び出し
-                this.closeEditModalOnSuccess(); // modal.closeEditModalOnSuccess() ではなく this.closeEditModalOnSuccess() で呼び出し
-                // notificationLogic の showToastNotification を呼び出し
+                this.closeEditModalOnSuccess();
                 this.showToastNotification('サービスを保存しました！', 'success', 3000);
 
             } catch (error) {
                 console.error('サービスの保存中にエラーが発生しました:', error);
-                // notificationLogic の showToastNotification を呼び出し
                 this.showToastNotification(error.message || 'サービスの保存中にエラーが発生しました。', 'error', 5000);
             } finally {
                 this.isLoading = false;
@@ -279,44 +256,47 @@ function serviceListPage() {
 
         // サービス削除処理
         async deleteService() {
-            // serviceToDelete は modalLogic から来ているが、app.js の state で保持されているので this.serviceToDelete でアクセス
             console.log('削除処理を実行', this.serviceToDelete);
             if (!this.serviceToDelete || !this.serviceToDelete.id) {
                 console.error('削除対象サービスが指定されていません。');
-                // notificationLogic の showToastNotification を呼び出し
                 this.showToastNotification('削除対象サービスが見つかりません。', 'error', 5000);
-                // modalLogic の closeDeleteConfirmModalOnSuccess を呼び出し
-                this.closeDeleteConfirmModalOnSuccess(); // modal.closeDeleteConfirmModalOnSuccess() ではなく this.closeDeleteConfirmModalOnSuccess() で呼び出し
+                this.closeDeleteConfirmModalOnSuccess();
                 return;
             }
 
-            this.isLoading = true;
+            this.isLoading = true; // 削除処理開始時に isLoading を true
             this.loadingMessage = 'サービスを削除中...';
 
             try {
-                // API呼び出しは serviceApi.js の関数を呼び出し
+                console.log('deleteServiceApi を呼び出します Service ID:', this.serviceToDelete.id);
                 await deleteServiceApi(this.serviceToDelete.id);
-                console.log('サービスを正常に削除しました', this.serviceToDelete.id);
+                console.log('サービスを正常に削除しました Service ID:', this.serviceToDelete.id);
 
+                // === ここを修正 ===
+                // isLoading を false に戻してから fetchServices を呼び出す
+                this.isLoading = false;
+                this.loadingMessage = 'データを読み込み中...'; // メッセージも更新
+                console.log('deleteService: isLoading を false に設定後、fetchServices を呼び出します...'); // 確認用ログ
                 // 削除後、サービス一覧を再取得 (1ページ目、現在のソート設定、現在の検索キーワードで)
                 await this.fetchServices(1, this.sortBy, this.sortDirection, this.searchTerm);
+                console.log('deleteService: fetchServices 呼び出し完了');
+                // ====================
 
-                // modalLogic の closeDeleteConfirmModalOnSuccess を呼び出し
-                this.closeDeleteConfirmModalOnSuccess(); // modal.closeDeleteConfirmModalOnSuccess() ではなく this.closeDeleteConfirmModalOnSuccess() で呼び出し
+                this.closeDeleteConfirmModalOnSuccess();
+                console.log('削除確認モーダルを閉じました');
 
-                // notificationLogic の showToastNotification を呼び出し
                 this.showToastNotification('サービスを削除しました！', 'success', 3000);
 
             } catch (error) {
                 console.error('サービスの削除中にエラーが発生しました:', error);
-                // notificationLogic の showToastNotification を呼び出し
                 this.showToastNotification(error.message || 'サービスの削除中にエラーが発生しました。', 'error', 5000);
             } finally {
+                // 削除処理の完了時にも isLoading を false に設定 (念のため。try/catch の中で既に設定済み)
                 this.isLoading = false;
                 this.loadingMessage = 'データを読み込み中...';
+                console.log('deleteService: メソッド終了');
             }
         },
-
 
         // ページの初期化処理 (URLパラメータから状態を読み込む) は app.js に維持
         init() {
@@ -335,12 +315,8 @@ function serviceListPage() {
                 searchTerm: initialSearchTerm
             });
 
-            // ソートの状態を初期化 (sortingLogic のメソッドを呼び出し)
-            this.setInitialSort(initialSortBy, initialSortDirection); // sorting.setInitialSort(...) ではなく this.setInitialSort(...)
-
-            // 検索キーワードの状態を初期化
+            this.setInitialSort(initialSortBy, initialSortDirection);
             this.searchTerm = initialSearchTerm;
-
 
             const initialUrl = new URL(window.location.origin + window.location.pathname);
             initialUrl.searchParams.set('page', initialPage);
@@ -351,12 +327,13 @@ function serviceListPage() {
             }
             history.replaceState({}, '', initialUrl);
 
-
-            // 初期読み込み時に fetchServices を呼び出す (検索キーワードを渡す)
+            // 初期読み込み時に fetchServices を呼び出す
+            // fetchServicesApi は serviceApi.js 内で getCsrfToken を呼び出す
             this.fetchServices(initialPage, initialSortBy, initialSortDirection, this.searchTerm);
 
             // 認証済みユーザー情報を取得
-            this.fetchAuthenticatedUser(); // app.js に維持したメソッドを呼び出し
+            // fetchAuthenticatedUserApi は serviceApi.js 内で getCsrfToken を呼び出す
+            this.fetchAuthenticatedUser();
 
             window.addEventListener('popstate', () => {
                 console.log('Popstate event triggered.');
@@ -366,17 +343,13 @@ function serviceListPage() {
                 const currentSortDirection = currentUrlParams.get('sd') || 'asc';
                 const currentSearchTerm = currentUrlParams.get('q') || '';
 
-                // 現在のAlpineの状態とURLの状態が異なる場合のみfetchServicesを呼び出す
                 if (this.pagination.current_page !== currentPage ||
                     this.sortBy !== currentSortBy ||
                     this.sortDirection !== currentSortDirection ||
                     this.searchTerm !== currentSearchTerm) {
                     console.log('State mismatch detected, refetching services.');
-                    // ソート状態を更新
                     this.setInitialSort(currentSortBy, currentSortDirection);
-                    // 検索キーワードの状態も更新
                     this.searchTerm = currentSearchTerm;
-                    // ページ番号、新しいソート設定、新しい検索キーワードを渡して再取得
                     this.fetchServices(currentPage, currentSortBy, currentSortDirection, currentSearchTerm);
                 } else {
                     console.log('Popstate event, but state matches URL. No refetch needed.');
