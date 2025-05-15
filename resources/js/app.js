@@ -4,52 +4,36 @@
 import Alpine from 'alpinejs';
 import intersect from '@alpinejs/intersect'; // 例: Intersect プラグイン
 
+// serviceApi.js から API 呼び出し関数をインポート
+import {
+    fetchServicesApi,
+    fetchAuthenticatedUserApi,
+    addServiceApi,
+    saveServiceApi,
+    deleteServiceApi
+} from './api/serviceApi';
+
+// serviceForms.js からフォームロジック関数をインポート
+import { serviceFormLogic } from './forms/serviceForms';
+
+
 // Alpine.js プラグインの登録
 Alpine.plugin(intersect);
 
-// CSRFトークンを取得するためのヘルパー関数
-// Bladeテンプレートで <meta name="csrf-token" content="{{ csrf_token() }}"> を設定しておく必要があります
-function getCsrfToken() {
-    const token = document.querySelector('meta[name="csrf-token"]');
-    return token ? token.content : null;
-}
-
-// API レスポンスのエラー（特に認証エラー）をハンドリングする共通関数
-async function handleApiResponse(response) {
-    // レスポンスのステータスコードをチェック
-    if (!response.ok) {
-        // 認証エラー (401 Unauthorized) の場合、ログイン画面にリダイレクト
-        if (response.status === 401) {
-            // console.log('DEBUG: 401 Unauthorized. Redirecting to login.');
-            window.location.href = '/login'; // Fortify のログインルートにリダイレクト
-            // エラーハンドリングを中断
-            return Promise.reject(new Error('認証されていません。ログインしてください。'));
-        }
-
-        // その他のエラーレスポンスの場合
-        const error = await response.json();
-        // console.error('API Error:', error);
-        // エラーメッセージを返す
-        return Promise.reject(new Error(error.message || `APIリクエスト中にエラーが発生しました (${response.status})。`));
-    }
-
-    // 成功レスポンスの場合はそのままレスポンスオブジェクトを返す
-    return response;
-}
 
 // x-data で使用するデータとメソッドを定義する関数
 function serviceListPage() {
     // Debug: この関数が呼び出されているか確認
     console.log('serviceListPage function called, initializing data...');
 
-    // バリデーションエラーメッセージの定義
-    const validationMessages = {
-        required: 'この項目は必須です。',
-        invalidDate: '有効な日付を入力してください。'
-    };
+    // serviceForms.js からフォームの状態とメソッドを取得
+    const forms = serviceFormLogic();
 
     return {
         // === State properties ===
+        // フォーム関連の状態は forms オブジェクトに含まれる
+        ...forms, // <<< serviceFormLogic から返されるプロパティとメソッドを展開して追加
+
         isDrawerOpen: false,
 
         showAddModal: false,
@@ -58,137 +42,38 @@ function serviceListPage() {
         // 削除確認モーダルの状態と削除対象サービス
         showDeleteConfirmModal: false,
         serviceToDelete: null, // 削除対象のサービスデータを保持
-        editingService: null, // 編集対象のサービスデータを保持
+        // editingService は openModal で設定され、API呼び出しやバリデーションで使用するため app.js に残す
+        editingService: null,
 
-        // トースト通知の状態とメッセージ (メインの x-data で管理)
+        // トースト通知の状態とメッセージ
         showToast: false,
         toastMessage: '',
-        toastType: null, // 'success', 'error', null
+        toastType: null,
 
         // iCalフィード関連の状態プロパティ
-        userIcalToken: '', // ユーザーのiCalトークン
-        userIcalUrl: '', // 生成されたiCalフィードURL
+        userIcalUrl: '',
 
-        // サービスデータの例 (実際にはAPIから取得)
-        services: [ // 初期状態は空にする
-            // Netflixの通知対象日を翌日に設定（例: 2025/05/12）
-            /*
-            {
-                id: 1,
-                name: 'Netflix',
-                type: 'contract',
-                notification_date: '2025-05-12',
-                memo: '年払い契約、次回更新時に解約を検討...',
-                categoryIcon: 'fas fa-music',
-                notification_timing: '7'
-            }, // notification_timingを追加
-            {
-                id: 2,
-                name: 'Google Drive',
-                type: 'trial',
-                notification_date: '2026-01-15',
-                memo: 'トライアル終了前に容量を確認...',
-                categoryIcon: 'fas fa-cloud',
-                notification_timing: '3'
-            },
-            {
-                id: 3,
-                name: 'Spotify',
-                type: 'contract',
-                notification_date: '2025-11-20',
-                memo: 'ファミリープランを契約中...',
-                categoryIcon: 'fas fa-music',
-                notification_timing: '0'
-            },
-            {
-                id: 4,
-                name: 'AWS S3',
-                type: 'contract',
-                notification_date: '2026-03-01',
-                memo: 'バックアップ用ストレージ...',
-                categoryIcon: 'fas fa-database',
-                notification_timing: '30'
-            },
-            {
-                id: 5,
-                name: 'Adobe Creative Cloud',
-                type: 'contract',
-                notification_date: '2025-10-10',
-                memo: '年間プラン、期限が近い...',
-                categoryIcon: 'fas fa-paint-brush',
-                notification_timing: '1'
-            },
-             */
-        ],
+        services: [], // 初期状態は空にする
 
         // ソートの状態
-        sortBy: 'notification_date', // 初期ソートキー
-        sortDirection: 'asc', // 'asc' or 'desc'
-
-        // サービス登録モーダルのフォーム状態とバリデーションエラー
-        addModalForm: {
-            name: '',
-            type: '', // ラジオボタンは初期値 null または '' が良い
-            notification_date: '',
-            notification_timing: '0', // select の初期値
-            memo: '',
-            errors: {
-                name: '',
-                type: '',
-                notification_date: ''
-            },
-            isValid: false // フォーム全体の有効性
-        },
-
-        // サービス編集モーダルのフォーム状態とバリデーションエラー
-        // 編集モーダルは editingService とデータを共有するため、エラー状態のみを別途管理
-        editModalFormErrors: {
-            name: '',
-            type: '',
-            notification_date: ''
-        },
+        sortBy: 'notification_date',
+        sortDirection: 'asc',
 
         // データのロード状態
         isLoading: false,
         loadingMessage: 'データを読み込み中...',
 
+
         // === Methods ===
 
         // サービスのデータをバックエンドから取得するメソッド
-        // サービスのデータをバックエンドから取得するメソッド
         async fetchServices() {
-            this.isLoading = true; // ロード開始
+            this.isLoading = true;
+            this.loadingMessage = 'サービスを読み込み中...';
             try {
-                // APIエンドポイントURLを確認
-                // Laravel の開発サーバーを使用している場合、通常 /api/... となります
-                const response = await fetch('/api/services', {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        // 認証ミドルウェアを一時的に外しているので、Authorizationヘッダーは不要
-                        // TODO: 認証機能実装後にAuthorizationヘッダーを追加
-                        // 'Authorization': `Bearer ${yourAuthToken}`,
-                    }
-                });
+                const fetchedServices = await fetchServicesApi();
 
-                // レスポンスのステータスコードをチェック
-                if (!response.ok) {
-                    // エラーレスポンスの場合
-                    const error = await response.json();
-                    console.error('Failed to fetch services:', error);
-                    throw new Error(error.message || `サービスの取得に失敗しました (${response.status})。`); // ステータスコードを含めると分かりやすい
-                }
-
-                // 共通のエラーハンドリング関数を使用
-                const handledResponse = await handleApiResponse(response);
-
-                // JSON形式でレスポンスボディを取得
-                const data = await response.json();
-
-                // 取得したサービスデータで services 配列を更新
-                // バックエンドからのレスポンス構造に合わせて 'data.services' などとアクセスします
-                // notification_timing を数値に変換してセット
-                this.services = data.services.map(service => {
+                this.services = fetchedServices.map(service => {
                     return {
                         ...service,
                         notification_timing: parseInt(service.notification_timing, 10)
@@ -196,16 +81,11 @@ function serviceListPage() {
                 });
                 console.log('サービス一覧を正常に取得しました', this.services);
 
-                // 取得後にフロントエンドでソートを適用（バックエンドでソートしない場合）
-                // this.sortServices(this.sortBy);
-
-                // 取得後にフロントエンドでソートを適用（ソート方向は切り替えない）
-                this.sortServices(this.sortBy, false); // toggleDirection を false に設定
-
+                // 取得後にフロントエンドでソートを適用
+                this.sortServices(this.sortBy, false);
 
             } catch (error) {
                 console.error('サービスの取得中にエラーが発生しました:', error);
-                // エラーメッセージをトーストで表示
                 this.toastMessage = error.message || 'サービスの取得中にエラーが発生しました。';
                 this.toastType = 'error';
                 this.showToast = true;
@@ -215,182 +95,58 @@ function serviceListPage() {
                     this.toastType = null;
                 }, 5000);
             } finally {
-                this.isLoading = false; // ロード終了
+                this.isLoading = false;
+                this.loadingMessage = 'データを読み込み中...';
             }
         },
 
         // 認証済みユーザーの情報を取得するメソッド
         async fetchAuthenticatedUser() {
             try {
-                // Fortify/Sanctum の認証済みユーザー情報エンドポイントにリクエスト
-                const response = await fetch('/api/user', {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': getCsrfToken() // Sanctum stateful 認証には CSRF トークンが必要です
-                    }
-                });
+                const userData = await fetchAuthenticatedUserApi();
 
-                const handledResponse = await handleApiResponse(response);
-
-                const data = await handledResponse.json(); // レスポンス全体を取得
-
-                // ユーザー情報とiCalフィードURLを個別に取得
-                const user = data.user;
-                const icalFeedUrl = data.ical_feed_url; // APIレスポンスから直接URLを取得
-
-                // ユーザー情報があればiCalフィードURLを保存
-                if (user && icalFeedUrl) { // icalFeedUrl が存在することも確認
-                    // this.userIcalToken はもう不要なので削除しても良いですが、今回はそのままにします
-                    // this.userIcalToken = user.ical_token; // トークンが必要な場合はここで保持
-                    this.userIcalUrl = icalFeedUrl; // バックエンドから受け取ったURLをセット
+                if (userData && userData.icalFeedUrl) {
+                    this.userIcalUrl = userData.icalFeedUrl;
                     console.log('iCal URL:', this.userIcalUrl);
-                    console.log('DEBUG: userIcalUrl after set:', this.userIcalUrl);
                 } else {
                     console.warn('Authenticated user or iCal feed URL not found.');
-                    // トークンやURLがない場合の表示をクリア
-                    // this.userIcalToken = ''; // 不要であれば削除
                     this.userIcalUrl = 'ログインすると表示されます。';
-                    console.log('DEBUG: userIcalUrl after set (not found):', this.userIcalUrl);
                 }
 
             } catch (error) {
                 console.error('認証ユーザーまたはiCalフィードURLの取得中にエラーが発生しました:', error);
-                // エラー時もトークンとURLをクリア
-                // this.userIcalToken = ''; // 不要であれば削除
                 this.userIcalUrl = 'エラーにより取得できませんでした。';
-                console.log('DEBUG: userIcalUrl after set (error):', this.userIcalUrl);
-                // 認証エラーはhandleApiResponseでリダイレクトされるため、ここではトーストは不要かもしれません
             }
         },
 
-        // 特定のフィールドのバリデーションを行う関数
-        // field: フィールド名 ('name', 'type', 'notificationDate')
-        // value: フィールドの値
-        // formType: 'add' or 'edit'
-        validateField(field, value, formType) {
-            let errorMessage = '';
-            let formErrors;
-
-            if (formType === 'add') {
-                formErrors = this.addModalForm.errors;
-            } else if (formType === 'edit') {
-                formErrors = this.editModalFormErrors;
-            } else {
-                return; // 不正な formType
-            }
-
-            // 必須チェック
-            if (!value || (typeof value === 'string' && value.trim() === '')) {
-                errorMessage = validationMessages.required;
-            } else {
-                // 日付フィールドの追加バリデーション
-                if (field === 'notification_date') {
-                    const date = new Date(value);
-                    if (isNaN(date.getTime())) {
-                        errorMessage = validationMessages.invalidDate;
-                    }
-                }
-            }
-
-            // エラーメッセージを更新
-            formErrors[field] = errorMessage;
-
-            // フォーム全体の有効性を更新 (今回は必須チェックのみなのでシンプル)
-            if (formType === 'add') {
-                this.addModalForm.isValid = this.addModalForm.errors.name === '' &&
-                    this.addModalForm.errors.type === '' &&
-                    this.addModalForm.errors.notification_date === '';
-            }
-            // 編集モーダルのisValidは今回は使用しないが、必要に応じて同様に定義
-        },
-
-        // サービス登録フォーム全体のバリデーションを行う関数
-        validateAddForm() {
-            this.validateField('name', this.addModalForm.name, 'add');
-            this.validateField('type', this.addModalForm.type, 'add');
-            this.validateField('notificationDate', this.addModalForm.notification_date, 'add');
-
-            // フォーム全体の有効性を返す
-            return this.addModalForm.isValid;
-        },
-
-        // サービス編集フォーム全体のバリデーションを行う関数
-        validateEditForm() {
-            // editingService の値を使ってバリデーション
-            if (!this.editingService) return false; // editingService がなければ無効
-
-            this.validateField('name', this.editingService.name, 'edit');
-            this.validateField('type', this.editingService.type, 'edit');
-            this.validateField('notificationDate', this.editingService.notification_date, 'edit');
-
-            // フォーム全体の有効性を計算して返す (プロパティとしては持たないが、関数で計算)
-            return this.editModalFormErrors.name === '' &&
-                this.editModalFormErrors.type === '' &&
-                this.editModalFormErrors.notification_date === '';
-        },
-
-        // フォームの状態をリセットする関数 (新規登録用)
-        resetAddForm() {
-            console.log('新規登録フォームをリセット');
-            this.addModalForm.name = '';
-            this.addModalForm.type = '';
-            this.addModalForm.notification_date = '';
-            this.addModalForm.notification_timing = '0';
-            this.addModalForm.memo = '';
-            // エラーメッセージもクリア
-            this.addModalForm.errors.name = '';
-            this.addModalForm.errors.type = '';
-            this.addModalForm.errors.notification_date = '';
-            this.addModalForm.isValid = false;
-        },
-
-        // 編集モーダルを開く際にエラー状態をリセットする関数
-        resetEditFormErrors() {
-            console.log('編集フォームのエラーをリセット');
-            this.editModalFormErrors.name = '';
-            this.editModalFormErrors.type = '';
-            this.editModalFormErrors.notification_date = '';
-        },
-
-        // 通知対象日の残り日数を計算する関数
+        // 通知対象日の残り日数を計算する関数 (utils.js に移動することも検討可能)
         getDaysRemaining(dateString) {
-            // null または undefined の場合のハンドリングを追加
-            if (!dateString) {
-                //console.warn('getDaysRemaining called with null or undefined dateString');
-                return Infinity; // 日付がない場合は遠い未来として扱う
+            if (!dateString || dateString.trim() === '') {
+                return Infinity;
             }
-            // Dateオブジェクトの生成が失敗した場合のハンドリング
             const notificationDate = new Date(dateString);
             if (isNaN(notificationDate.getTime())) {
-                console.error('Invalid date string provided to getDaysRemaining:', dateString);
-                return Infinity; // 不正な日付文字列の場合は遠い未来として扱う
+                return Infinity;
             }
 
             const today = new Date();
-            // 時刻情報をリセットして日付のみで比較
             notificationDate.setHours(0, 0, 0, 0);
             today.setHours(0, 0, 0, 0);
 
             const timeDiff = notificationDate.getTime() - today.getTime();
             const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
-            // Debugログ (確認後削除可能)
-            const isNear = daysDiff <= 30;
-            //console.log(`[getDaysRemaining] Date: ${dateString}, Today: ${today.toISOString().split('T')[0]}, Days Diff: ${daysDiff}, Is Near Deadline: ${isNear}`);
-
             return daysDiff;
         },
 
-        // 日付をYYYY/MM/DD 形式にフォーマットする関数
+        // 日付をYYYY/MM/DD 形式にフォーマットする関数 (utils.js に移動することも検討可能)
         formatDate(dateString) {
-            // null または undefined の場合のハンドリングを追加
-            if (!dateString) {
+            if (!dateString || dateString.trim() === '') {
                 return 'N/A';
             }
             const date = new Date(dateString);
             if (isNaN(date.getTime())) {
-                return 'Invalid Date'; // 不正な日付文字列の場合
+                return 'Invalid Date';
             }
 
             const year = date.getFullYear();
@@ -399,307 +155,202 @@ function serviceListPage() {
             return `${year}/${month}/${day}`;
         },
 
-        // ソート処理を行う関数
-        // ソート処理を行う関数
-        // toggleDirection: trueの場合ソート方向を切り替え、falseの場合は切り替えない (デフォルト: true)
-        sortServices(key, toggleDirection = true) { // 引数 toggleDirection を追加し、デフォルト値を true に
+        // ソート処理を行う関数 (このロジックも services.js のようなファイルに移動することも検討可能)
+        sortServices(key, toggleDirection = true) {
             if (this.sortBy === key) {
-                // 同じキーがクリックされ、かつソート方向の切り替えが有効な場合
-                if (toggleDirection) { // toggleDirection のチェックを追加
+                if (toggleDirection) {
                     this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
                 }
             } else {
-                // 異なるキーがクリックされた場合はソートキーを更新し、方向をascにする
                 this.sortBy = key;
                 this.sortDirection = 'asc';
             }
 
-            // サービスデータをソート
             this.services.sort((a, b) => {
-                // ... (ソートロジックは変更なし) ...
                 let comparison = 0;
                 let valueA = a[this.sortBy];
                 let valueB = b[this.sortBy];
 
-                // 通知対象日の場合は日付として比較
+                if (valueA == null && valueB == null) return 0;
+                if (valueA == null) return this.sortDirection === 'asc' ? -1 : 1;
+                if (valueB == null) return this.sortDirection === 'asc' ? 1 : -1;
+
+
                 if (this.sortBy === 'notification_date') {
                     const dateA = new Date(valueA).getTime();
                     const dateB = new Date(valueB).getTime();
 
                     if (isNaN(dateA) && isNaN(dateB)) comparison = 0;
-                    else if (isNaN(dateA)) comparison = 1;
-                    else if (isNaN(dateB)) comparison = -1;
+                    else if (isNaN(dateA)) comparison = this.sortDirection === 'asc' ? -1 : 1;
+                    else if (isNaN(dateB)) comparison = this.sortDirection === 'asc' ? 1 : -1;
                     else if (dateA > dateB) comparison = 1;
                     else if (dateA < dateB) comparison = -1;
 
+                } else if (this.sortBy === 'notification_timing') {
+                    const timingA = parseInt(valueA, 10);
+                    const timingB = parseInt(valueB, 10);
+
+                    if (timingA > timingB) comparison = 1;
+                    else if (timingA < timingB) comparison = -1;
+                    else comparison = 0;
+
                 } else {
-                    // 文字列の場合はロケールを考慮して比較
-                    // notification_timing が数値であることを前提
-                    if (this.sortBy === 'notification_timing') { // ★ notification_timing の数値比較を追加 ★
-                        if (valueA > valueB) comparison = 1;
-                        else if (valueA < valueB) comparison = -1;
-                        else comparison = 0;
+                    valueA = String(valueA).toLowerCase();
+                    valueB = String(valueB).toLowerCase();
+                    if (valueA > valueB) {
+                        comparison = 1;
+                    } else if (valueA < valueB) {
+                        comparison = -1;
                     } else {
-                        // その他の文字列での比較
-                        valueA = String(valueA).toLowerCase();
-                        valueB = String(valueB).toLowerCase();
-                        if (valueA > valueB) {
-                            comparison = 1;
-                        } else if (valueA < valueB) {
-                            comparison = -1;
-                        } else {
-                            comparison = 0;
-                        }
+                        comparison = 0;
                     }
                 }
 
-
-                // 降順の場合は比較結果を反転
                 return this.sortDirection === 'desc' ? comparison * -1 : comparison;
             });
         },
 
-        // iCal URLをクリップボードにコピーする関数
+        // iCal URLをクリップボードにコピーする関数 (これも utils.js に移動することも検討可能)
         copyIcalUrl() {
             const urlElement = document.getElementById('ical-url');
-            if (urlElement) {
+            if (urlElement && this.userIcalUrl && this.userIcalUrl !== 'ログインすると表示されます。' && this.userIcalUrl !== 'エラーにより取得できませんでした。') {
                 navigator.clipboard.writeText(urlElement.innerText)
                     .then(() => {
-                        // alert の代わりにトーストを表示 (成功)
-                        this.toastMessage = 'URLをコピーしました！'; // 成功メッセージをセット
-                        this.toastType = 'success'; // タイプを success に
-                        this.showToast = true; // トーストを表示状態に
-
-                        // 3秒後にトーストを非表示にする
+                        this.toastMessage = 'URLをコピーしました！';
+                        this.toastType = 'success';
+                        this.showToast = true;
                         setTimeout(() => {
                             this.showToast = false;
-                            this.toastMessage = ''; // メッセージもクリア
-                            this.toastType = null; // タイプもクリア
-                        }, 3000); // 3000ミリ秒 = 3秒
+                            this.toastMessage = '';
+                            this.toastType = null;
+                        }, 3000);
                     })
                     .catch(err => {
                         console.error('URLのコピーに失敗しました: ', err);
-                        // alert の代わりにトーストを表示 (失敗)
-                        this.toastMessage = 'URLのコピーに失敗しました。手動でコピーしてください。'; // 失敗メッセージをセット
-                        this.toastType = 'error'; // タイプを error に
-                        this.showToast = true; // トーストを表示状態に
-
-                        // 5秒後にトーストを非表示にする (失敗は少し長く表示)
+                        this.toastMessage = 'URLのコピーに失敗しました。手動でコピーしてください。';
+                        this.toastType = 'error';
+                        this.showToast = true;
                         setTimeout(() => {
                             this.showToast = false;
-                            this.toastMessage = ''; // メッセージもクリア
-                            this.toastType = null; // タイプもクリア
-                        }, 5000); // 5000ミリ秒 = 5秒
+                            this.toastMessage = '';
+                            this.toastType = null;
+                        }, 5000);
                     });
+            } else {
+                console.warn('コピーするiCal URLがありません。');
+                this.toastMessage = 'コピーできるiCal URLがありません。';
+                this.toastType = 'error';
+                this.showToast = true;
+                setTimeout(() => {
+                    this.showToast = false;
+                    this.toastMessage = '';
+                    this.toastType = null;
+                }, 3000);
             }
         },
 
         // モーダルを開く関数
-        // service オブジェクトを受け取り、編集モーダル用に編集対象として保持
         openModal(modalId, service = null) {
-            if (modalId === '#add-modal') {
-                this.resetAddForm(); // 新規登録モーダルを開く前にフォームをリセット
-                this.showAddModal = true;
-            } else if (modalId === '#edit-modal') {
-                if (service) {
-                    this.editingService = {...service}; // ディープコピーが必要な場合は修正
-                    // notification_date を YYYY-MM-DD 形式に変換して上書き
-                    if (this.editingService.notification_date) {
-                        const date = new Date(this.editingService.notification_date);
-                        // Dateオブジェクトが有効な場合のみフォーマット
-                        if (!isNaN(date.getTime())) {
-                            const year = date.getFullYear();
-                            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-                            const day = date.getDate().toString().padStart(2, '0');
-                            this.editingService.notification_date = `${year}-${month}-${day}`;
-                            console.log('DEBUG: Formatted notification_date for edit modal:', this.editingService.notification_date); // 確認用ログ
-                        } else {
-                            console.error('Invalid date string received for editingService.notification_date:', this.editingService.notification_date);
-                            // 不正な日付の場合は空文字列など、適切な初期値を設定することも検討
-                            this.editingService.notification_date = ''; // エラーの場合は空にする例
-                        }
-                    } else {
-                        // notification_date が null や undefined の場合の処理
-                        this.editingService.notification_date = ''; // 空にする例
-                    }
+            console.log('openModal called with:', modalId, service);
 
-                    // editingService がセットされた直後のログ
-                    console.log('DEBUG: editingService set:', JSON.parse(JSON.stringify(this.editingService)));
-                    console.log('DEBUG: editingService.notification_date:', this.editingService.notification_date, typeof this.editingService.notification_date);
-                    // Debug: editingService.notification_timing の値と型を確認
-                    console.log('DEBUG: editingService.notification_timing value:', this.editingService.notification_timing);
-                    console.log('DEBUG: editingService.notification_timing type:', typeof this.editingService.notification_timing);
-
-                    this.resetEditFormErrors(); // 編集モーダルを開く前にエラーをリセット
-                    this.showEditModal = true;
-                    console.log('編集モーダルを開きます', this.editingService);
-                } else {
-                    console.error('Service data not passed to openModal for edit');
-                    // エラー処理など
-                    this.toastMessage = 'サービスの編集に失敗しました。';
-                    this.toastType = 'error';
-                    this.showToast = true;
-                    setTimeout(() => {
-                        this.showToast = false;
-                        this.toastMessage = '';
-                        this.toastType = null;
-                    }, 5000);
-                }
-            } else if (modalId === '#guide-modal') {
-                this.showGuideModal = true;
+            if (this.showDeleteConfirmModal) {
+                this.showDeleteConfirmModal = false;
+                this.serviceToDelete = null;
             }
-            // 削除確認モーダルは openDeleteConfirmModal で開くので、ここでは閉じます
-            this.showDeleteConfirmModal = false;
-            this.serviceToDelete = null;
+            setTimeout(() => {
+                if (modalId === '#add-modal') {
+                    this.resetAddForm(); // serviceForms から取得したメソッド
+                    this.showAddModal = true;
+                    console.log('新規登録モーダルを開きます');
+                } else if (modalId === '#edit-modal') {
+                    if (service) {
+                        this.editingService = {...service};
+                        // notification_date をYYYY-MM-DD 形式に変換
+                        if (this.editingService.notification_date) {
+                            const date = new Date(this.editingService.notification_date);
+                            if (!isNaN(date.getTime())) {
+                                const year = date.getFullYear();
+                                const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                                const day = date.getDate().toString().padStart(2, '0');
+                                this.editingService.notification_date = `${year}-${month}-${day}`;
+                            } else {
+                                this.editingService.notification_date = '';
+                            }
+                        } else {
+                            this.editingService.notification_date = '';
+                        }
+                        // notification_timing が数値でない場合は文字列に変換
+                        if (typeof this.editingService.notification_timing !== 'string') {
+                            this.editingService.notification_timing = String(this.editingService.notification_timing);
+                        }
+
+                        this.resetEditFormErrors(); // serviceForms から取得したメソッド
+                        this.showEditModal = true;
+                        console.log('編集モーダルを開きます', this.editingService);
+                    } else {
+                        console.error('Service data not passed to openModal for edit');
+                        this.toastMessage = 'サービスの編集に失敗しました。';
+                        this.toastType = 'error';
+                        this.showToast = true;
+                        setTimeout(() => {
+                            this.showToast = false;
+                            this.toastMessage = '';
+                            this.toastType = null;
+                        }, 5000);
+                    }
+                } else if (modalId === '#guide-modal') {
+                    this.showGuideModal = true;
+                    console.log('設定ガイドモーダルを開きます');
+                } else if (modalId === '#delete-confirm-modal') {
+                    console.warn('Attempted to open delete confirm modal directly with openModal.');
+                }
+            }, this.showDeleteConfirmModal ? 50 : 0);
         },
 
-        // モーダルを閉じる関数 (削除確認モーダルの状態は変更しない)
+        // モーダルを閉じる関数
         closeModals() {
             this.showAddModal = false;
             this.showEditModal = false;
             this.showGuideModal = false;
-            // 編集中のサービスデータをクリア
-            this.editingService = null; // これは編集モーダルを閉じる際に必要なので維持
-            // showDeleteConfirmModal はこのメソッドでは変更しない
-            // TODO: モーダルを閉じた後にフォームをリセットする処理などもここに追加
+            this.editingService = null;
+            console.log('全てのモーダルを閉じました (削除確認除く)');
         },
+
 
         // 削除確認モーダルを開く関数
         openDeleteConfirmModal(service) {
-            // 編集モーダルを閉じる（重要：編集モーダルが閉じないと、その下の要素へのクリックが伝播してしまいます）
-            this.closeModals();
-            // 削除対象サービスをセット
-            this.serviceToDelete = service;
-            // DEBUG: 確認モーダルを開く直前
-            console.log('削除確認モーダルを開く直前:', this.serviceToDelete);
+            console.log('openDeleteConfirmModal called with service:', service);
 
-            // モーダルが完全に閉じ、DOMが安定するのを少し待つ
-            // タイミングの問題を回避するために少し遅延させる
+            if (this.showEditModal) {
+                this.showEditModal = false;
+            }
+            if (this.showAddModal) {
+                this.showAddModal = false;
+            }
+            if (this.showGuideModal) {
+                this.showGuideModal = false;
+            }
+
+            this.serviceToDelete = service;
+            console.log('削除確認モーダルを開きます', this.serviceToDelete);
+
             setTimeout(() => {
-                this.showDeleteConfirmModal = true; // 削除確認モーダルを表示
-                console.log('削除確認モーダルを開きます', this.serviceToDelete); // デバッグ用ログ
-            }, 50); // 50ミリ秒の遅延（調整可能）
+                this.showDeleteConfirmModal = true;
+                console.log('showDeleteConfirmModal is now true');
+            }, 50);
         },
 
         // 削除確認をキャンセルする関数
         cancelDelete() {
-            // 削除確認モーダルを閉じる
             this.showDeleteConfirmModal = false;
-            // 削除対象サービスをクリア
             this.serviceToDelete = null;
-            console.log('削除をキャンセルしました'); // デバッグ用ログ
-            // 必要であれば編集モーダルを再度開く処理などをここに追加できますが、今回は閉じっぱなしにします。
+            console.log('削除をキャンセルしました');
         },
 
-        // サービス保存/更新処理
-        async saveService() {
-            // 編集フォームのバリデーションを実行
-            if (!this.validateEditForm()) {
-                console.log('編集フォームにバリデーションエラーがあります。');
-                this.toastMessage = '入力内容に不備があります。ご確認ください。';
-                this.toastType = 'error';
-                this.showToast = true;
-                setTimeout(() => {
-                    this.showToast = false;
-                    this.toastMessage = '';
-                    this.toastType = null;
-                }, 5000);
-                return; // バリデーション失敗時は処理を中断
-            }
-
-            console.log('保存処理を実行 (バックエンド連携予定)', this.editingService);
-
-            this.isLoading = true; // ロード開始
-            try {
-                // バックエンドAPIへのPUTリクエストを実装
-                // 更新対象のサービスのIDをURLに含めます
-                const response = await fetch(`/api/services/${this.editingService.id}`, {
-                    method: 'PUT', // 更新なのでPUTメソッド (バックエンドに合わせてください)
-                    headers: {
-                        'Content-Type': 'application/json', // リクエストボディの形式を指定
-                        'Accept': 'application/json', // レスポンスとしてJSONを期待
-                        'X-CSRF-TOKEN': getCsrfToken() // CSRFトークンを含める
-                        // TODO: API認証が必要な場合は、Authorizationヘッダーなどを追加
-                    },
-                    // editingService にはフォームの入力値がバインドされています
-                    // これをJSON文字列に変換してリクエストボディとして送信します
-                    body: JSON.stringify({
-                        // 必須項目と更新可能な項目を含める
-                        name: this.editingService.name,
-                        type: this.editingService.type,
-                        notification_date: this.editingService.notification_date, // YYYY-MM-DD 形式になっているはず
-                        notification_timing: parseInt(this.editingService.notification_timing, 10), // 数値に変換
-                        memo: this.editingService.memo,
-                        // category_icon など、更新可能な他の項目も必要に応じて追加
-                        category_icon: this.editingService.category_icon, // 例: category_icon も更新対象の場合
-                    })
-                });
-
-                // レスポンスのステータスコードをチェック
-                if (!response.ok) {
-                    // エラーレスポンスの場合
-                    const error = await response.json();
-                    console.error('Failed to save service:', error);
-
-                    // バックエンドからのバリデーションエラーがあれば表示
-                    if (response.status === 422 && error.errors) {
-                        // Laravel のバリデーションエラー形式を想定
-                        const fieldErrors = Object.values(error.errors).flat().join(' ');
-                        throw new Error('保存内容に不備があります: ' + fieldErrors);
-                    } else {
-                        throw new Error(error.message || 'サービスの保存に失敗しました。');
-                    }
-                }
-
-                // 共通のエラーハンドリング関数を使用
-                const handledResponse = await handleApiResponse(response);
-
-                // 成功レスポンスの場合
-                const result = await response.json();
-                console.log('サービスを正常に保存しました', result);
-
-                // 保存成功後:
-                // 1. サービス一覧を更新するために再度 API を呼び出す
-                await this.fetchServices();
-
-                // 保存後のソート設定を確認するログを追加
-                console.log('DEBUG: Sort settings after save and fetch:', {
-                    sortBy: this.sortBy,
-                    sortDirection: this.sortDirection
-                });
-                // 2. 編集モーダルを閉じる
-                this.closeModals();
-                // 3. 成功したことを示すトースト通知を表示
-                this.toastMessage = 'サービスを保存しました！';
-                this.toastType = 'success';
-                this.showToast = true;
-                setTimeout(() => {
-                    this.showToast = false;
-                    this.toastMessage = '';
-                    this.toastType = null;
-                }, 3000); // 3秒後に非表示
-
-            } catch (error) {
-                // エラー発生時:
-                console.error('サービスの保存中にエラーが発生しました:', error);
-                // エラーメッセージをトースト通知で表示
-                this.toastMessage = error.message || 'サービスの保存中にエラーが発生しました。';
-                this.toastType = 'error';
-                this.showToast = true;
-                setTimeout(() => {
-                    this.showToast = false;
-                    this.toastMessage = '';
-                    this.toastType = null;
-                }, 5000); // 5秒後に非表示
-            } finally {
-                this.isLoading = false; // ロード終了
-                this.loadingMessage = 'データを読み込み中...'; // メッセージを元に戻すか、別の表示にする
-            }
-        },
 
         // サービス新規登録処理
         async addService() {
-            // 新規登録フォームのバリデーションを実行
+            // serviceForms から取得したメソッドでバリデーションを実行
             if (!this.validateAddForm()) {
                 console.log('新規登録フォームにバリデーションエラーがあります。');
                 this.toastMessage = '入力内容に不備があります。ご確認ください。';
@@ -710,73 +361,22 @@ function serviceListPage() {
                     this.toastMessage = '';
                     this.toastType = null;
                 }, 5000);
-                return; // バリデーション失敗時は処理を中断
+                return;
             }
 
-            console.log('登録処理を実行 (バックエンド連携予定)');
+            console.log('登録処理を実行');
 
-            // APIに送信する直前の addModalForm の内容をログ出力
-            console.log('DEBUG: addService sending form data:', JSON.parse(JSON.stringify(this.addModalForm)));
-
-            this.isLoading = true; // ロード開始
-            this.loadingMessage = 'サービスを登録中...'; // ロードメッセージを更新
+            this.isLoading = true;
+            this.loadingMessage = 'サービスを登録中...';
 
             try {
-                // バックエンドAPIへのPOSTリクエストを実装
-                const response = await fetch('/api/services', { // バックエンドで定義したAPIエンドポイント
-                    method: 'POST', // 新規登録なのでPOSTメソッド
-                    headers: {
-                        'Content-Type': 'application/json', // リクエストボディの形式を指定
-                        'Accept': 'application/json', // レスポンスとしてJSONを期待
-                        'X-CSRF-TOKEN': getCsrfToken() // CSRFトークンをヘッダーに含める（LaravelのAPIでは通常不要な場合がありますが、セキュリティのため含めておくと安全です）
-                        // TODO: API認証が必要な場合は、Authorizationヘッダーなどを追加
-                    },
-                    // this.addModalForm にはフォームの入力値がバインドされています
-                    // これをJSON文字列に変換してリクエストボディとして送信します
-                    body: JSON.stringify({
-                        name: this.addModalForm.name,
-                        type: this.addModalForm.type,
-                        notification_date: this.addModalForm.notification_date, // APIキー名に合わせる
-                        notification_timing: parseInt(this.addModalForm.notification_timing, 10), // 数値に変換
-                        memo: this.addModalForm.memo,
-                        // カテゴリアイコンは現在フォームにないので、ここでは送信しないか、固定値を送る
-                        // category_icon: 'fas fa-question-circle', // 例: 固定値を送る場合
-                    })
-                });
+                // serviceApi.js からインポートした関数を呼び出す
+                const newService = await addServiceApi(this.addModalForm);
+                console.log('新しいサービスを正常に登録しました', newService);
 
-                // レスポンスのステータスコードをチェック
-                if (!response.ok) {
-                    // エラーレスポンスの場合
-                    const error = await response.json();
-                    console.error('Failed to add service:', error);
+                await this.fetchServices(); // サービス一覧を再取得
 
-                    // バックエンドからのバリデーションエラーメッセージがあれば表示
-                    if (response.status === 422 && error.errors) {
-                        // Laravel のバリデーションエラー形式を想定
-                        const fieldErrors = Object.values(error.errors).flat().join(' ');
-                        throw new Error('登録内容に不備があります: ' + fieldErrors);
-                    } else {
-                        throw new Error(error.message || 'サービスの登録に失敗しました。');
-                    }
-                }
-
-                // 成功レスポンスの場合
-                const result = await response.json();
-                console.log('新しいサービスを正常に登録しました', result);
-
-                // 登録成功後:
-                // 1. サービス一覧を更新するために再度 API を呼び出す
-                await this.fetchServices();
-
-                // 保存後のソート設定を確認するログを追加
-                console.log('DEBUG: Sort settings after save and fetch:', {
-                    sortBy: this.sortBy,
-                    sortDirection: this.sortDirection
-                });
-
-                // 2. 新規登録モーダルを閉じる
-                this.closeModals();
-                // 3. 成功したことを示すトースト通知を表示
+                this.closeModals(); // 新規登録モーダルを閉じる
                 this.toastMessage = '新しいサービスを追加しました！';
                 this.toastType = 'success';
                 this.showToast = true;
@@ -784,12 +384,10 @@ function serviceListPage() {
                     this.showToast = false;
                     this.toastMessage = '';
                     this.toastType = null;
-                }, 3000); // 3秒後に非表示
+                }, 3000);
 
             } catch (error) {
-                // エラー発生時:
                 console.error('サービスの登録中にエラーが発生しました:', error);
-                // エラーメッセージをトースト通知で表示
                 this.toastMessage = error.message || 'サービスの登録中にエラーが発生しました。';
                 this.toastType = 'error';
                 this.showToast = true;
@@ -797,17 +395,85 @@ function serviceListPage() {
                     this.showToast = false;
                     this.toastMessage = '';
                     this.toastType = null;
-                }, 5000); // 5秒後に非表示
+                }, 5000);
             } finally {
-                this.isLoading = false; // ロード終了
-                this.loadingMessage = 'データを読み込み中...'; // メッセージを元に戻すか、別の表示にする
+                this.isLoading = false;
+                this.loadingMessage = 'データを読み込み中...';
+            }
+        },
+
+        // サービス保存/更新処理
+        async saveService() {
+            if (!this.editingService || !this.editingService.id) {
+                console.error('編集対象サービスが指定されていません。');
+                this.toastMessage = '編集対象サービスが見つかりません。';
+                this.toastType = 'error';
+                this.showToast = true;
+                setTimeout(() => {
+                    this.showToast = false;
+                    this.toastMessage = '';
+                    this.toastType = null;
+                }, 5000);
+                this.closeModals();
+                return;
+            }
+
+            // serviceForms から取得したメソッドでバリデーションを実行
+            if (!this.validateEditForm(this.editingService)) { // editingService を引数として渡す
+                console.log('編集フォームにバリデーションエラーがあります。');
+                this.toastMessage = '入力内容に不備があります。ご確認ください。';
+                this.toastType = 'error';
+                this.showToast = true;
+                setTimeout(() => {
+                    this.showToast = false;
+                    this.toastMessage = '';
+                    this.toastType = null;
+                }, 5000);
+                return;
+            }
+
+            console.log('保存処理を実行');
+
+            this.isLoading = true;
+            this.loadingMessage = 'サービスを保存中...';
+
+            try {
+                // serviceApi.js からインポートした関数を呼び出す
+                const updatedService = await saveServiceApi(this.editingService.id, this.editingService);
+                console.log('サービスを正常に保存しました', updatedService);
+
+                await this.fetchServices(); // サービス一覧を再取得
+
+                this.closeModals(); // 編集モーダルを閉じる
+                this.toastMessage = 'サービスを保存しました！';
+                this.toastType = 'success';
+                this.showToast = true;
+                setTimeout(() => {
+                    this.showToast = false;
+                    this.toastMessage = '';
+                    this.toastType = null;
+                }, 3000);
+
+            } catch (error) {
+                console.error('サービスの保存中にエラーが発生しました:', error);
+                this.toastMessage = error.message || 'サービスの保存中にエラーが発生しました。';
+                this.toastType = 'error';
+                this.showToast = true;
+                setTimeout(() => {
+                    this.showToast = false;
+                    this.toastMessage = '';
+                    this.toastType = null;
+                }, 5000);
+            } finally {
+                this.isLoading = false;
+                this.loadingMessage = 'データを読み込み中...';
             }
         },
 
         // サービス削除処理
         async deleteService() {
-            console.log('削除処理を実行 (バックエンド連携予定)', this.serviceToDelete);
-            if (!this.serviceToDelete) {
+            console.log('削除処理を実行', this.serviceToDelete);
+            if (!this.serviceToDelete || !this.serviceToDelete.id) {
                 console.error('削除対象サービスが指定されていません。');
                 this.toastMessage = '削除対象サービスが見つかりません。';
                 this.toastType = 'error';
@@ -817,40 +483,23 @@ function serviceListPage() {
                     this.toastMessage = '';
                     this.toastType = null;
                 }, 5000);
-                this.showDeleteConfirmModal = false; // モーダルは閉じる
+                this.showDeleteConfirmModal = false;
+                this.serviceToDelete = null;
                 return;
             }
 
-            this.isLoading = true; // ロード開始
+            this.isLoading = true;
+            this.loadingMessage = 'サービスを削除中...';
+
             try {
-                // TODO: APIエンドポイントURLを修正
-                const response = await fetch(`/api/services/${this.serviceToDelete.id}`, { // 例: /api/services/1 にDELETE
-                    method: 'DELETE',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': getCsrfToken() // CSRFトークンをヘッダーに含める
-                        // TODO: API認証が必要な場合は、Authorizationヘッダーなどを追加
-                    }
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    console.error('Failed to delete service:', error);
-                    throw new Error(error.message || 'サービスの削除に失敗しました。');
-                }
-
-                // 削除APIは通常成功してもボディがないことが多いので、レスポンスボディのパースは必須ではない
-                // const result = await response.json();
+                // serviceApi.js からインポートした関数を呼び出す
+                await deleteServiceApi(this.serviceToDelete.id);
                 console.log('サービスを正常に削除しました', this.serviceToDelete.id);
 
-                // 共通のエラーハンドリング関数を使用
-                const handledResponse = await handleApiResponse(response);
+                await this.fetchServices(); // サービス一覧を再取得
 
-                // 削除成功後、再度サービス一覧を取得して表示を更新
-                await this.fetchServices(); // サービスの再取得
-
-                this.showDeleteConfirmModal = false; // 削除確認モーダルを閉じる
-                this.serviceToDelete = null; // 削除対象をクリア
+                this.showDeleteConfirmModal = false;
+                this.serviceToDelete = null;
 
                 this.toastMessage = 'サービスを削除しました！';
                 this.toastType = 'success';
@@ -871,21 +520,18 @@ function serviceListPage() {
                     this.toastMessage = '';
                     this.toastType = null;
                 }, 5000);
-                this.showDeleteConfirmModal = false; // エラーでもモーダルは閉じる
-                this.serviceToDelete = null; // 削除対象をクリア
+                this.showDeleteConfirmModal = false;
+                this.serviceToDelete = null;
             } finally {
-                this.isLoading = false; // ロード終了
+                this.isLoading = false;
+                this.loadingMessage = 'データを読み込み中...';
             }
         },
+
 
         // ページの初期化処理としてサービス取得を呼び出す
         init() {
             console.log('Alpine component initialized');
-            // コンポーネント初期化時に認証状態を確認し、必要であればサービス一覧を取得
-            // Bladeアプリケーションでは、ログイン済みであればこのページが表示されているはずなので、
-            // ここでfetchServicesを呼び出すのは適切です。
-            // 未ログイン時にこのページにアクセスしようとすると、Fortifyのミドルウェアが
-            // ログインページへリダイレクトするため、未ログインでfetchServicesが実行されることはありません。
             this.fetchServices();
             this.fetchAuthenticatedUser();
         },
@@ -897,5 +543,4 @@ Alpine.data('serviceListPage', serviceListPage);
 
 // Alpine を開始
 // 通常は bootstrap.js またはこのファイルで一度だけ呼び出す
-// プロジェクト設定に合わせてどちらか適切な方を使用してください
 Alpine.start();
