@@ -197,7 +197,7 @@ function serviceListPage() {
                 console.log('サービス一覧を正常に取得しました', this.services);
 
                 // 取得後にフロントエンドでソートを適用（バックエンドでソートしない場合）
-                this.sortServices(this.sortBy);
+                // this.sortServices(this.sortBy);
 
                 // 取得後にフロントエンドでソートを適用（ソート方向は切り替えない）
                 this.sortServices(this.sortBy, false); // toggleDirection を false に設定
