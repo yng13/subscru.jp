@@ -31,27 +31,36 @@
     <div
         class="service-list-header hidden md:flex bg-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
         {{-- Sortable header cells - Added py-3 and text-sm for icon --}}
+        {{-- === ここを修正 === --}}
         <div class="cursor-pointer hover:bg-gray-200 flex items-center py-3" @click="sortServices('name')"
-             :class="{ 'sorted-asc': sortBy === 'name' && sortDirection === 'asc', 'sorted-desc': sortBy === 'name' && sortDirection === 'desc' }">
-            サービス名 <i class="fas fa-sort ml-2 text-gray-400 text-sm" x-show="sortBy !== 'name'"></i>
-            <i class="fas fa-sort-up ml-2 text-gray-600 text-sm"
-               x-show="sortBy === 'name' && sortDirection === 'asc'"></i>
-            <i class="fas fa-sort-down ml-2 text-gray-600 text-sm"
-               x-show="sortBy === 'name' && sortDirection === 'desc'"></i>
+             :class="{ 'sorted': sortBy === 'name' }"> {{-- sorted クラスを追加 --}}
+            サービス名
+            {{-- ソート状態に応じてアイコンを切り替える --}}
+            <i class="ml-2 text-sm"
+               :class="{
+                   'fas fa-sort text-gray-400': sortBy !== 'name', // ソートされていない場合
+                   'fas fa-sort-up text-blue-600': sortBy === 'name' && sortDirection === 'asc', // サービス名で昇順ソート中の場合 (色を強調)
+                   'fas fa-sort-down text-blue-600': sortBy === 'name' && sortDirection === 'desc' // サービス名で降順ソート中の場合 (色を強調)
+               }"></i>
         </div>
+        {{-- ================ --}}
         {{-- Non-sortable cells - Added py-3 for consistent height --}}
         <div class="py-3">種別</div>
         {{-- Sortable header cells - Added py-3 and text-sm for icon --}}
+        {{-- === ここを修正 === --}}
         <div class="cursor-pointer hover:bg-gray-200 flex items-center py-3"
              @click="sortServices('notification_date')"
-             :class="{ 'sorted-asc': sortBy === 'notification_date' && sortDirection === 'asc', 'sorted-desc': sortBy === 'notification_date' && sortDirection === 'desc' }">
-            通知対象日 <i class="fas fa-sort ml-2 text-gray-400 text-sm"
-                          x-show="sortBy !== 'notification_date'"></i>
-            <i class="fas fa-sort-up ml-2 text-gray-600 text-sm"
-               x-show="sortBy === 'notification_date' && sortDirection === 'asc'"></i>
-            <i class="fas fa-sort-down ml-2 text-gray-600 text-sm"
-               x-show="sortBy === 'notification_date' && sortDirection === 'desc'"></i>
+             :class="{ 'sorted': sortBy === 'notification_date' }"> {{-- sorted クラスを追加 --}}
+            通知対象日
+            {{-- ソート状態に応じてアイコンを切り替える --}}
+            <i class="ml-2 text-sm"
+               :class="{
+                   'fas fa-sort text-gray-400': sortBy !== 'notification_date', // ソートされていない場合
+                   'fas fa-sort-up text-blue-600': sortBy === 'notification_date' && sortDirection === 'asc', // 通知対象日で昇順ソート中の場合 (色を強調)
+                   'fas fa-sort-down text-blue-600': sortBy === 'notification_date' && sortDirection === 'desc' // 通知対象日で降順ソート中の場合 (色を強調)
+               }"></i>
         </div>
+        {{-- ================ --}}
         {{-- Non-sortable cells - Added py-3 for consistent height --}}
         <div class="py-3">メモ</div>
     </div>
@@ -82,7 +91,8 @@
                           x-text="service.type === 'contract' ? '契約中' : 'トライアル中'"></span>
                 </div>
                 {{-- PC: Stack date and days remaining / スマホ: Horizontal --}}
-                <div class="mb-2 md:mb-0 md:py-4 md:px-6 notification-text flex flex-row items-center md:flex-col md:items-start">
+                <div
+                    class="mb-2 md:mb-0 md:py-4 md:px-6 notification-text flex flex-row items-center md:flex-col md:items-start">
                     <span class="md:hidden font-semibold mr-2">通知対象日:</span>
                     {{-- 日付と残り日数を囲むspanにスペースを追加 --}}
                     <span class="space-x-2">
@@ -115,7 +125,8 @@
                     'border-gray-300': !link.active, // 非アクティブなページ
                     'pointer-events-none opacity-50': !link.url // 前後ページでURLがない場合 (最初/最後のページ)
                }"
-               x-text="link.label === 'pagination.previous' ? '前へ' : (link.label === 'pagination.next' ? '次へ' : link.label)" {{-- 前後ページは日本語ラベルに置き換え、それ以外は元のラベルを使用 --}}
+               x-text="link.label === 'pagination.previous' ? '前へ' : (link.label === 'pagination.next' ? '次へ' : link.label)"
+               {{-- 前後ページは日本語ラベルに置き換え、それ以外は元のラベルを使用 --}}
                @click.prevent="goToPage(link.url)" {{-- クリックイベントで goToPage を呼び出し --}}
             ></a>
         </template>

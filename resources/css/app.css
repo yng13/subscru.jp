@@ -80,7 +80,8 @@ nav button.flex {
 /* Logout ボタンの hover および focus スタイル */
 /* @apply を使用して Tailwind ユーティリティを適用 (ビルドプロセスで解釈される) */
 nav button:hover {
-    @apply text-blue-500; /* hover 時のテキスト色を青に */
+    @apply text-blue-500;
+    /* hover 時のテキスト色を青に */
 }
 
 nav button:focus {
@@ -102,7 +103,6 @@ nav button:focus-visible {
     /* .modal { */
     /* transform: none !important; */
     /* } */
-
     /* PC版モーダルの最大高さを調整 */
     /* モーダル全体の最大高さを、ビューポートの高さからトップマージン (mt-16 = 4rem) を引いた値に設定 */
     /* これにより、モーダル全体が画面内に収まりやすくなります */
@@ -127,13 +127,39 @@ nav button:focus-visible {
 
     /* 各カラムの固有幅設定 */
     .service-list-header > div:nth-child(1), /* サービス名カラム */
-    .service-item > div:nth-child(1) { flex-basis: 30%; width: 30%; }
+    .service-item > div:nth-child(1) {
+        flex-basis: 30%;
+        width: 30%;
+    }
+
     .service-list-header > div:nth-child(2), /* 種別カラム */
-    .service-item > div:nth-child(2) { flex-basis: 15%; width: 15%; }
+    .service-item > div:nth-child(2) {
+        flex-basis: 15%;
+        width: 15%;
+    }
+
     .service-list-header > div:nth-child(3), /* 通知対象日カラム */
-    .service-item > div:nth-child(3) { flex-basis: 25%; width: 25%; }
+    .service-item > div:nth-child(3) {
+        flex-basis: 25%;
+        width: 25%;
+    }
+
     .service-list-header > div:nth-child(4), /* メモカラム */
-    .service-item > div:nth-child(4) { flex-basis: 30%; width: 30%; flex-grow: 1; } /* メモ欄は残りのスペースを占める */
+    .service-item > div:nth-child(4) {
+        flex-basis: 30%;
+        width: 30%;
+        flex-grow: 1;
+    }
+
+    /* メモ欄は残りのスペースを占める */
+}
+
+/* === ここにソート中のヘッダーのスタイルを追加 === */
+/* .service-list-header の直下の子要素で 'sorted' クラスを持つ要素に適用 */
+.service-list-header > div.sorted {
+    @apply font-bold;
+    /* テキストを太字に */
+    /* @apply text-gray-900; */ /* 必要であればテキスト色も濃くするなど */
 }
 
 /* スマホ向け (md: ブレークポイント未満) 固有のスタイル調整 */
