@@ -138,9 +138,9 @@ return [
     ],
 
     'redirects' => [
-        'login' => '/login',
+        'login' => '/my',
         'logout' => '/login', // ログアウト後のリダイレクト先
-        'register' => '/login', // 登録後のリダイレクト先 (適宜変更)
+        'register' => '/my', // 登録後のリダイレクト先 (適宜変更)
         //'password-reset' => '/login',
         //'password-confirm' => '/dashboard',
         //'email-verification' => '/dashboard',

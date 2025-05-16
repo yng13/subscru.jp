@@ -8,10 +8,29 @@ use App\Http\Controllers\IcalFeedController;
 use App\Http\Controllers\ServiceController;
 
 Route::middleware('web')->group(function () {
-
+    // ランディングページ (認証なしでアクセス可能)
     Route::get('/', function () {
+        return view('welcome'); // welcome ビューを表示するように変更
+    })->name('welcome');
+
+    // プライバシーポリシー (認証なしでアクセス可能)
+    Route::get('/privacy', function () {
+        return view('privacy'); // privacy ビューを表示するように変更
+    })->name('privacy');
+
+    // 利用規約 (認証なしでアクセス可能)
+    Route::get('/terms', function () {
+        return view('terms'); // terms ビューを表示するように変更
+    })->name('terms');
+
+    // 問い合わせフォーム (認証なしでアクセス可能)
+    Route::get('/contact', function () {
+        return view('contact');
+    })->name('contact');
+
+    Route::get('/my', function () {
         return view('index');
-    })->middleware('auth');
+    })->middleware('auth')->name('my');
 
     Route::prefix('api')->group(function () {
         // 認証済みのユーザーのみアクセス可能なAPIルートのグループ
@@ -30,7 +49,7 @@ Route::middleware('web')->group(function () {
             // TODO: 今後追加するAPI
             // Route::get('/services/{service}', [ServiceController::class, 'show']); // サービス詳細取得
 
-// 認証済みのユーザー情報を取得するAPIルート (Sanctumデフォルト)
+            // 認証済みのユーザー情報を取得するAPIルート (Sanctumデフォルト)
             Route::get('/user', function (Request $request) {
                 $user = $request->user();
                 // 認証済みユーザーの場合、iCalフィードURLを追加して返す

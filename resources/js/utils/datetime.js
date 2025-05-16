@@ -1,5 +1,7 @@
 // resources/js/utils/datetime.js
 
+// デバッグユーティリティ関数をインポート
+import {debugLog, debugWarn, debugError} from './debug';
 // 通知対象日の残り日数を計算する関数
 export function getDaysRemaining(dateString) {
     if (!dateString || dateString.trim() === '') {

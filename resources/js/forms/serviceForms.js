@@ -1,5 +1,8 @@
 // resources/js/forms/serviceForms.js
 
+// デバッグユーティリティ関数をインポート
+import {debugLog, debugWarn, debugError} from '../utils/debug';
+
 // バリデーションエラーメッセージの定義
 const validationMessages = {
     required: 'この項目は必須です。',
@@ -45,7 +48,7 @@ export function serviceFormLogic() {
             } else if (formType === 'edit') {
                 formErrors = this.editModalFormErrors;
             } else {
-                console.error('Invalid formType provided to validateField:', formType);
+                debugError('Invalid formType provided to validateField:', formType);
                 return; // 不正な formType
             }
 
@@ -92,7 +95,7 @@ export function serviceFormLogic() {
         validateEditForm(editingService) {
             // editingService が存在するか確認
             if (!editingService) {
-                console.warn('editingService is null during validateEditForm call.');
+                debugWarn('editingService is null during validateEditForm call.');
                 return false; // editingService がなければ無効
             }
 
@@ -108,7 +111,7 @@ export function serviceFormLogic() {
 
         // フォームの状態をリセットする関数 (新規登録用)
         resetAddForm() {
-            console.log('新規登録フォームをリセット');
+            debugLog('新規登録フォームをリセット');
             this.addModalForm.name = '';
             this.addModalForm.type = '';
             this.addModalForm.notification_date = '';
@@ -122,7 +125,7 @@ export function serviceFormLogic() {
 
         // 編集モーダルを開く際にエラー状態をリセットする関数
         resetEditFormErrors() {
-            console.log('編集フォームのエラーをリセット');
+            debugLog('編集フォームのエラーをリセット');
             this.editModalFormErrors.name = '';
             this.editModalFormErrors.type = '';
             this.editModalFormErrors.notification_date = '';

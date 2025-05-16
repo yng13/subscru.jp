@@ -1,5 +1,8 @@
 // resources/js/utils/notification.js
 
+// デバッグユーティリティ関数をインポート
+import {debugLog, debugWarn, debugError} from './debug';
+
 // トースト通知の状態とロジックをまとめたオブジェクトを返す関数
 export function notificationLogic() {
     return {
@@ -10,7 +13,7 @@ export function notificationLogic() {
 
         // トースト通知を表示するメソッド
         showToastNotification(message, type = null, duration = 3000) { // durationのデフォルトは3秒
-            console.log(`Showing toast: "${message}" (${type})`);
+            debugLog(`Showing toast: "${message}" (${type})`);
             this.toastMessage = message;
             this.toastType = type;
             this.showToast = true;
@@ -23,7 +26,7 @@ export function notificationLogic() {
 
         // トースト通知を非表示にするメソッド
         hideToastNotification() {
-            console.log('Hiding toast.');
+            debugLog('Hiding toast.');
             this.showToast = false;
             // 非表示後にメッセージとタイプをクリア
             setTimeout(() => { // アニメーション後にクリアするために少し遅延

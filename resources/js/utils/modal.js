@@ -1,5 +1,8 @@
 // resources/js/utils/modal.js
 
+// デバッグユーティリティ関数をインポート
+import {debugLog, debugWarn, debugError} from './debug';
+
 // モーダル表示/非表示と関連ロジックをまとめたオブジェクトを返す関数
 // このロジックは Alpine.js の data オブジェクトに展開して使用されます。
 export function modalLogic() {
@@ -20,7 +23,7 @@ export function modalLogic() {
         // formLogic: フォームのリセットに使用するため、app.js から serviceFormLogic オブジェクトを渡す必要があります
         // notificationLogic: トースト通知に使用するため、app.js から notificationLogic オブジェクトを渡す必要があります
         openModal(modalId, service = null) {
-            console.log('modalLogic: openModal called with:', modalId, service);
+            debugLog('modalLogic: openModal called with:', modalId, service);
 
             // 既に削除確認モーダルが開いている場合は閉じる
             if (this.showDeleteConfirmModal) {
@@ -39,11 +42,11 @@ export function modalLogic() {
                     if (typeof this.resetAddForm === 'function') { // resetAddForm が存在するか確認
                         this.resetAddForm();
                     } else {
-                        console.warn('modalLogic: resetAddForm method not found on this context.');
+                        debugWarn('modalLogic: resetAddForm method not found on this context.');
                     }
 
                     this.showAddModal = true;
-                    console.log('modalLogic: 新規登録モーダルを開きます');
+                    debugLog('modalLogic: 新規登録モーダルを開きます');
 
                 } else if (modalId === '#edit-modal') {
                     if (service) {
@@ -75,14 +78,14 @@ export function modalLogic() {
                         if (typeof this.resetEditFormErrors === 'function') { // resetEditFormErrors が存在するか確認
                             this.resetEditFormErrors();
                         } else {
-                            console.warn('modalLogic: resetEditFormErrors method not found on this context.');
+                            debugWarn('modalLogic: resetEditFormErrors method not found on this context.');
                         }
 
 
                         this.showEditModal = true;
-                        console.log('modalLogic: 編集モーダルを開きます', this.editingService);
+                        debugLog('modalLogic: 編集モーダルを開きます', this.editingService);
                     } else {
-                        console.error('modalLogic: Service data not passed to openModal for edit');
+                        debugError('modalLogic: Service data not passed to openModal for edit');
                         if (typeof this.showToastNotification === 'function') { // showToastNotification が存在するか確認
                             this.showToastNotification('サービスの編集に失敗しました。', 'error', 5000);
                         }
@@ -90,11 +93,11 @@ export function modalLogic() {
 
                 } else if (modalId === '#guide-modal') {
                     this.showGuideModal = true;
-                    console.log('modalLogic: 設定ガイドモーダルを開きます');
+                    debugLog('modalLogic: 設定ガイドモーダルを開きます');
 
                 } else if (modalId === '#delete-confirm-modal') {
                     // 削除確認モーダルは openDeleteConfirmModal で開くため、ここでは直接開かない
-                    console.warn('modalLogic: Attempted to open delete confirm modal directly with openModal.');
+                    debugWarn('modalLogic: Attempted to open delete confirm modal directly with openModal.');
                 }
             }, this.showDeleteConfirmModal ? 50 : 0); // 削除確認モーダルが閉じている間に遅延
         },
@@ -106,13 +109,13 @@ export function modalLogic() {
             this.showGuideModal = false;
             // 編集中のサービスデータもクリア
             this.editingService = null;
-            console.log('modalLogic: 全てのモーダルを閉じました (削除確認除く)');
+            debugLog('modalLogic: 全てのモーダルを閉じました (削除確認除く)');
         },
 
         // 削除確認モーダルを開くメソッド
         // service: 削除対象のサービスオブジェクト
         openDeleteConfirmModal(service) {
-            console.log('modalLogic: openDeleteConfirmModal called with service:', service);
+            debugLog('modalLogic: openDeleteConfirmModal called with service:', service);
 
             // 他のモーダルが開いている場合は閉じる
             this.closeModals(); // closeModals は serviceToDelete を null にしないため、ここでは editingService のみがクリアされる
@@ -122,7 +125,7 @@ export function modalLogic() {
             // 削除確認モーダルを開くのに少し遅延を入れる
             setTimeout(() => {
                 this.showDeleteConfirmModal = true;
-                console.log('modalLogic: showDeleteConfirmModal is now true');
+                debugLog('modalLogic: showDeleteConfirmModal is now true');
             }, 50); // 短い遅延
         },
 
@@ -130,27 +133,27 @@ export function modalLogic() {
         cancelDelete() {
             this.showDeleteConfirmModal = false;
             this.serviceToDelete = null; // 削除対象サービスをクリア
-            console.log('modalLogic: 削除をキャンセルしました');
+            debugLog('modalLogic: 削除をキャンセルしました');
         },
 
         // サービス新規登録成功後にモーダルを閉じる
         closeAddModalOnSuccess() {
             this.showAddModal = false;
-            console.log('modalLogic: 新規登録モーダルを閉じました');
+            debugLog('modalLogic: 新規登録モーダルを閉じました');
         },
 
         // サービス保存成功後にモーダルを閉じる
         closeEditModalOnSuccess() {
             this.showEditModal = false;
             this.editingService = null; // 編集中のサービスデータもクリア
-            console.log('modalLogic: 編集モーダルを閉じました');
+            debugLog('modalLogic: 編集モーダルを閉じました');
         },
 
         // サービス削除成功後に削除確認モーダルを閉じる
         closeDeleteConfirmModalOnSuccess() {
             this.showDeleteConfirmModal = false;
             this.serviceToDelete = null; // 削除対象サービスをクリア
-            console.log('modalLogic: 削除確認モーダルを閉じました');
+            debugLog('modalLogic: 削除確認モーダルを閉じました');
         }
     };
 }

@@ -32,6 +32,8 @@ import {notificationLogic} from './utils/notification';
 import {modalLogic} from './utils/modal';
 import {icalLogic} from './utils/ical';
 
+// デバッグユーティリティ関数をインポート
+import {debugLog, debugWarn, debugError} from './utils/debug';
 
 // Alpine.js プラグインの登録
 Alpine.plugin(intersect);
@@ -39,7 +41,7 @@ Alpine.plugin(intersect);
 
 // x-data で使用するデータとメソッドを定義する関数
 function serviceListPage() {
-    console.log('serviceListPage function called, initializing data...');
+    debugLog('serviceListPage function called, initializing data...');
 
     // 各ロジックオブジェクトを生成
     const forms = serviceFormLogic();
@@ -73,7 +75,7 @@ function serviceListPage() {
         formatDate: formatDate,
 
         clearSearchTerm() {
-            console.log('検索キーワードをクリアします');
+            debugLog('検索キーワードをクリアします');
             this.searchTerm = ''; // 検索キーワードを空にする
             // 検索キーワードがクリアされた状態でサービス一覧を再取得 (1ページ目に戻る)
             // fetchServices メソッドは既に searchTerm を引数として受け取ります
@@ -97,9 +99,9 @@ function serviceListPage() {
         // === Methods ===
 
         async fetchServices(page = this.pagination.current_page, sortBy = this.sortBy, sortDirection = this.sortDirection, searchTerm = this.searchTerm) {
-            console.log('fetchServices: メソッド開始');
+            debugLog('fetchServices: メソッド開始');
             if (this.isLoading) {
-                console.log('fetchServices: isLoading が true のため早期リターン');
+                debugLog('fetchServices: isLoading が true のため早期リターン');
                 return;
             }
 
@@ -124,13 +126,13 @@ function serviceListPage() {
             // API呼び出し時に searchTerm を渡す (serviceApi.js は既に修正済み)
             // fetchServicesApi に CSRF トークンは渡しません。serviceApi.js の内部で取得します。
             try {
-                console.log('fetchServices: fetchServicesApi を呼び出します'); // 確認用ログ
+                debugLog('fetchServices: fetchServicesApi を呼び出します'); // 確認用ログ
                 // URLSearchParams から直接文字列を渡すのではなく、fetchServicesApi 内でクエリパラメータを構築するように戻します
                 // これは前の修正で誤って fetchServices 内でURLSearchParamsを文字列化して渡すように変更したためです。
                 // fetchServicesApi にはページ番号、ソート情報、検索キーワードを引数として渡します。
                 const responseData = await fetchServicesApi(page, sortBy, sortDirection, searchTerm); // serviceApi.js 内でURL構築と fetch を行う
 
-                console.log('fetchServices: fetchServicesApi 呼び出し完了'); // 確認用ログ
+                debugLog('fetchServices: fetchServicesApi 呼び出し完了'); // 確認用ログ
 
 
                 this.services = responseData.data.map(service => {
@@ -151,15 +153,15 @@ function serviceListPage() {
                     prev_page_url: responseData.prev_page_url,
                 };
 
-                console.log('サービス一覧とページネーション情報を正常に取得しました', this.services, this.pagination);
+                debugLog('サービス一覧とページネーション情報を正常に取得しました', this.services, this.pagination);
 
             } catch (error) {
-                console.error('サービスの取得中にエラーが発生しました:', error);
+                debugError('サービスの取得中にエラーが発生しました:', error);
                 this.showToastNotification(error.message || 'サービスの取得中にエラーが発生しました。', 'error', 5000);
             } finally {
                 this.isLoading = false;
                 this.loadingMessage = 'データを読み込み中...';
-                console.log('fetchServices: メソッド終了'); // 確認用ログ
+                debugLog('fetchServices: メソッド終了'); // 確認用ログ
             }
         },
 
@@ -172,7 +174,7 @@ function serviceListPage() {
             const page = url.searchParams.get('page');
 
             if (page) {
-                console.log('ページ切り替え:', page);
+                debugLog('ページ切り替え:', page);
                 // URLSearchParams から抽出したパラメータを渡す
                 const sortBy = url.searchParams.get('sb') || this.sortBy;
                 const sortDirection = url.searchParams.get('sd') || this.sortDirection;
@@ -180,25 +182,25 @@ function serviceListPage() {
 
                 this.fetchServices(parseInt(page, 10), sortBy, sortDirection, searchTerm);
             } else {
-                console.warn('ページURLからページ番号を抽出できませんでした:', pageUrl);
+                debugWarn('ページURLからページ番号を抽出できませんでした:', pageUrl);
             }
         },
 
         // 認証済みユーザーの情報を取得するメソッド (app.js に維持)
         async fetchAuthenticatedUser() {
-            console.log('app.js: fetchAuthenticatedUser called');
+            debugLog('app.js: fetchAuthenticatedUser called');
             try {
                 // fetchAuthenticatedUserApi は serviceApi.js 内で getCsrfToken を呼び出す
                 const userData = await fetchAuthenticatedUserApi();
                 if (userData && userData.icalFeedUrl) {
                     this.setIcalUrl(userData.icalFeedUrl);
-                    console.log('app.js: iCal URL:', this.userIcalUrl);
+                    debugLog('app.js: iCal URL:', this.userIcalUrl);
                 } else {
-                    console.warn('app.js: Authenticated user or iCal feed URL not found.');
+                    debugWarn('app.js: Authenticated user or iCal feed URL not found.');
                     this.setIcalUrl('ログインすると表示されます。');
                 }
             } catch (error) {
-                console.error('app.js: 認証ユーザーまたはiCalフィードURLの取得中にエラーが発生しました:', error);
+                debugError('app.js: 認証ユーザーまたはiCalフィードURLの取得中にエラーが発生しました:', error);
                 this.setIcalUrl('エラーにより取得できませんでした。');
                 this.showToastNotification('カレンダーURLの取得中にエラーが発生しました。', 'error', 5000);
             }
@@ -207,19 +209,19 @@ function serviceListPage() {
         // サービス新規登録処理
         async addService() {
             if (!this.validateAddForm()) {
-                console.log('新規登録フォームにバリデーションエラーがあります。');
+                debugLog('新規登録フォームにバリデーションエラーがあります。');
                 this.showToastNotification('入力内容に不備があります。ご確認ください。', 'error', 5000);
                 return;
             }
 
-            console.log('登録処理を実行');
+            debugLog('登録処理を実行');
             this.isLoading = true;
             this.loadingMessage = 'サービスを登録中...';
 
             try {
                 // addServiceApi は serviceApi.js 内で getCsrfToken を呼び出す
                 const newService = await addServiceApi(this.addModalForm);
-                console.log('新しいサービスを正常に登録しました', newService);
+                debugLog('新しいサービスを正常に登録しました', newService);
 
                 // 登録後、サービス一覧を再取得 (現在のページ・ソート設定、現在の検索キーワードで)
                 await this.fetchServices(this.pagination.current_page, this.sortBy, this.sortDirection, this.searchTerm);
@@ -228,7 +230,7 @@ function serviceListPage() {
                 this.showToastNotification('新しいサービスを追加しました！', 'success', 3000);
 
             } catch (error) {
-                console.error('サービスの登録中にエラーが発生しました:', error);
+                debugError('サービスの登録中にエラーが発生しました:', error);
                 this.showToastNotification(error.message || 'サービスの登録中にエラーが発生しました。', 'error', 5000);
             } finally {
                 this.isLoading = false;
@@ -239,26 +241,26 @@ function serviceListPage() {
         // サービス保存/更新処理
         async saveService() {
             if (!this.editingService || !this.editingService.id) {
-                console.error('編集対象サービスが指定されていません。');
+                debugError('編集対象サービスが指定されていません。');
                 this.showToastNotification('編集対象サービスが見つかりません。', 'error', 5000);
                 this.closeModals();
                 return;
             }
 
             if (!this.validateEditForm(this.editingService)) {
-                console.log('編集フォームにバリデーションエラーがあります。');
+                debugLog('編集フォームにバリデーションエラーがあります。');
                 this.showToastNotification('入力内容に不備があります。ご確認ください。', 'error', 5000);
                 return;
             }
 
-            console.log('保存処理を実行');
+            debugLog('保存処理を実行');
             this.isLoading = true;
             this.loadingMessage = 'サービスを保存中...';
 
             try {
                 // saveServiceApi は serviceApi.js 内で getCsrfToken を呼び出す
                 const updatedService = await saveServiceApi(this.editingService.id, this.editingService);
-                console.log('サービスを正常に保存しました', updatedService);
+                debugLog('サービスを正常に保存しました', updatedService);
 
                 // 更新後、サービス一覧を再取得 (現在のページ・ソート設定、現在の検索キーワードで)
                 await this.fetchServices(this.pagination.current_page, this.sortBy, this.sortDirection, this.searchTerm);
@@ -267,7 +269,7 @@ function serviceListPage() {
                 this.showToastNotification('サービスを保存しました！', 'success', 3000);
 
             } catch (error) {
-                console.error('サービスの保存中にエラーが発生しました:', error);
+                debugError('サービスの保存中にエラーが発生しました:', error);
                 this.showToastNotification(error.message || 'サービスの保存中にエラーが発生しました。', 'error', 5000);
             } finally {
                 this.isLoading = false;
@@ -277,9 +279,9 @@ function serviceListPage() {
 
         // サービス削除処理
         async deleteService() {
-            console.log('削除処理を実行', this.serviceToDelete);
+            debugLog('削除処理を実行', this.serviceToDelete);
             if (!this.serviceToDelete || !this.serviceToDelete.id) {
-                console.error('削除対象サービスが指定されていません。');
+                debugError('削除対象サービスが指定されていません。');
                 this.showToastNotification('削除対象サービスが見つかりません。', 'error', 5000);
                 this.closeDeleteConfirmModalOnSuccess();
                 return;
@@ -289,39 +291,39 @@ function serviceListPage() {
             this.loadingMessage = 'サービスを削除中...';
 
             try {
-                console.log('deleteServiceApi を呼び出します Service ID:', this.serviceToDelete.id);
+                debugLog('deleteServiceApi を呼び出します Service ID:', this.serviceToDelete.id);
                 await deleteServiceApi(this.serviceToDelete.id);
-                console.log('サービスを正常に削除しました Service ID:', this.serviceToDelete.id);
+                debugLog('サービスを正常に削除しました Service ID:', this.serviceToDelete.id);
 
                 // === ここを修正 ===
                 // isLoading を false に戻してから fetchServices を呼び出す
                 this.isLoading = false;
                 this.loadingMessage = 'データを読み込み中...'; // メッセージも更新
-                console.log('deleteService: isLoading を false に設定後、fetchServices を呼び出します...'); // 確認用ログ
+                debugLog('deleteService: isLoading を false に設定後、fetchServices を呼び出します...'); // 確認用ログ
                 // 削除後、サービス一覧を再取得 (1ページ目、現在のソート設定、現在の検索キーワードで)
                 await this.fetchServices(1, this.sortBy, this.sortDirection, this.searchTerm);
-                console.log('deleteService: fetchServices 呼び出し完了');
+                debugLog('deleteService: fetchServices 呼び出し完了');
                 // ====================
 
                 this.closeDeleteConfirmModalOnSuccess();
-                console.log('削除確認モーダルを閉じました');
+                debugLog('削除確認モーダルを閉じました');
 
                 this.showToastNotification('サービスを削除しました！', 'success', 3000);
 
             } catch (error) {
-                console.error('サービスの削除中にエラーが発生しました:', error);
+                debugError('サービスの削除中にエラーが発生しました:', error);
                 this.showToastNotification(error.message || 'サービスの削除中にエラーが発生しました。', 'error', 5000);
             } finally {
                 // 削除処理の完了時にも isLoading を false に設定 (念のため。try/catch の中で既に設定済み)
                 this.isLoading = false;
                 this.loadingMessage = 'データを読み込み中...';
-                console.log('deleteService: メソッド終了');
+                debugLog('deleteService: メソッド終了');
             }
         },
 
         // ページの初期化処理 (URLパラメータから状態を読み込む) は app.js に維持
         init() {
-            console.log('Alpine component initialized');
+            debugLog('Alpine component initialized');
 
             const urlParams = new URLSearchParams(window.location.search);
             const initialPage = parseInt(urlParams.get('page') || '1', 10);
@@ -329,7 +331,7 @@ function serviceListPage() {
             const initialSortDirection = urlParams.get('sd') || 'asc';
             const initialSearchTerm = urlParams.get('q') || '';
 
-            console.log('Initial params from URL:', {
+            debugLog('Initial params from URL:', {
                 page: initialPage,
                 sortBy: initialSortBy,
                 sortDirection: initialSortDirection,
@@ -357,7 +359,7 @@ function serviceListPage() {
             this.fetchAuthenticatedUser();
 
             window.addEventListener('popstate', () => {
-                console.log('Popstate event triggered.');
+                debugLog('Popstate event triggered.');
                 const currentUrlParams = new URLSearchParams(window.location.search);
                 const currentPage = parseInt(currentUrlParams.get('page') || '1', 10);
                 const currentSortBy = currentUrlParams.get('sb') || 'notification_date';
@@ -368,12 +370,12 @@ function serviceListPage() {
                     this.sortBy !== currentSortBy ||
                     this.sortDirection !== currentSortDirection ||
                     this.searchTerm !== currentSearchTerm) {
-                    console.log('State mismatch detected, refetching services.');
+                    debugLog('State mismatch detected, refetching services.');
                     this.setInitialSort(currentSortBy, currentSortDirection);
                     this.searchTerm = currentSearchTerm;
                     this.fetchServices(currentPage, currentSortBy, currentSortDirection, currentSearchTerm);
                 } else {
-                    console.log('Popstate event, but state matches URL. No refetch needed.');
+                    debugLog('Popstate event, but state matches URL. No refetch needed.');
                 }
             });
         },

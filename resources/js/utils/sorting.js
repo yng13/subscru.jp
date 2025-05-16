@@ -1,5 +1,8 @@
 // resources/js/utils/sorting.js
 
+// デバッグユーティリティ関数をインポート
+import {debugLog, debugWarn, debugError} from './debug';
+
 // ソートの状態とロジックをまとめたオブジェクトを返す関数
 // fetchServicesCallback 引数を削除
 export function sortingLogic() {
@@ -20,7 +23,7 @@ export function sortingLogic() {
                 newSortDirection = 'asc';
             }
 
-            console.log(`ソート設定変更: ${key}, 方向: ${newSortDirection}`);
+            debugLog(`ソート設定変更: ${key}, 方向: ${newSortDirection}`);
 
             // ソートの状態を即時更新
             this.sortBy = key;
