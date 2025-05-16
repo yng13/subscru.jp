@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Service;
@@ -48,9 +49,9 @@ class ServiceManagementTest extends TestCase
      */
     public function test_unauthenticated_user_cannot_view_service_list_page(): void
     {
-        // 認証を解除 (actingAs を呼び出さない)
-        // setUp() で設定された認証状態を無視し、完全なミドルウェアスタックを適用
-        $this->withMiddleware();
+        // 明示的に認証を解除する
+        //$this->actingAs(null);
+        Auth::logout();
 
         $response = $this->get('/my');
 
@@ -105,9 +106,11 @@ class ServiceManagementTest extends TestCase
      */
     public function test_unauthenticated_user_cannot_access_service_list_api(): void
     {
-        // 認証を解除 (actingAs を呼び出さない)
-        // setUp() で設定された認証状態を無視し、完全なミドルウェアスタックを適用
-        $this->withMiddleware();
+        // 認証を解除する (Auth::logout() はそのまま)
+        Auth::logout();
+
+        // Sanctum の AuthenticateSession ミドルウェアを一時的に無効にする
+        $this->withoutMiddleware(\Laravel\Sanctum\Http\Middleware\AuthenticateSession::class);
 
         $response = $this->get('/api/services');
 
@@ -365,6 +368,7 @@ class ServiceManagementTest extends TestCase
     public function test_authenticated_user_can_get_ical_feed_url(): void
     {
         // UserFactory で ical_token が生成されている前提
+        // setUp() で actingAs($this->user) されているので、認証済み状態
 
         $response = $this->actingAs($this->user)->get('/api/user');
 
@@ -373,9 +377,17 @@ class ServiceManagementTest extends TestCase
                 'user',
                 'ical_feed_url', // iCalフィードURLが含まれていることを確認
             ])
-            ->assertJsonPath('user.id', $this->user->id)
-            // ical_feed_url が webcal:// スキームで、ユーザーのトークンを含んでいることを確認
-            ->assertJsonFragment(['ical_feed_url' => route('ical.feed', ['token' => $this->user->ical_token], true)]);
+            ->assertJsonPath('user.id', $this->user->id);
+
+        // レスポンスで返されるical_feed_urlは webcal:// に置換されているはず
+        // テスト側でも同様のロジックで期待するURLを生成する
+        $expectedIcalFeedUrl = route('ical.feed', ['token' => $this->user->ical_token], true);
+        $expectedIcalFeedUrl = str_replace('https://', 'webcal://', str_replace('http://', 'webcal://', $expectedIcalFeedUrl));
+
+        // assertJsonFragment の代わりに assertJsonPath を使って、ical_feed_url の値を直接検証
+        $response->assertJsonPath('ical_feed_url', $expectedIcalFeedUrl);
+        // または、assertJsonFragment を使い続けるならこちら
+        // $response->assertJsonFragment(['ical_feed_url' => $expectedIcalFeedUrl]);
     }
 
     /**
@@ -384,8 +396,9 @@ class ServiceManagementTest extends TestCase
     public function test_unauthenticated_user_cannot_get_ical_feed_url(): void
     {
         // 認証を解除
-        $this->withoutMiddleware(\Illuminate\Auth\Middleware\Authenticate::class);
-        $this->user = null;
+        //$this->withoutMiddleware(\Illuminate\Auth\Middleware\Authenticate::class);
+        //$this->user = null;
+        Auth::logout();
 
         $response = $this->get('/api/user');
 
@@ -398,6 +411,10 @@ class ServiceManagementTest extends TestCase
      */
     public function test_ical_feed_is_accessible_with_valid_token(): void
     {
+        // ユーザーがical_tokenを持っているか確認
+        $this->assertNotNull($this->user->ical_token, 'Test user must have an ical_token.');
+        $this->assertNotEmpty($this->user->ical_token, 'Test user ical_token must not be empty.');
+
         // テストユーザーに紐づくサービスを作成
         Service::factory()->create(['user_id' => $this->user->id, 'name' => 'iCal Test Service', 'notification_date' => '2025-12-25', 'notification_timing' => 0]);
 
