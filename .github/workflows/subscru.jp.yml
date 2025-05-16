@@ -40,7 +40,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-        node-version: '20' # Vite で必要なNode.jsバージョンに合わせる (package.jsonを確認)
+          node-version: '20' # Vite で必要なNode.jsバージョンに合わせる (package.jsonを確認)
 
       - name: Install npm dependencies
         run: npm install
