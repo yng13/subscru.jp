@@ -1,8 +1,6 @@
 # Subscru - サブスクリプション管理ウェブアプリケーション
 
-[![Build Status](https://www.google.com/search?q=https://github.com/yng13/subscru.jp/actions/workflows/tests/badge.svg)](https://www.google.com/search?q=https://github.com/yng13/subscru.jp/actions/workflows/tests)
-[![Latest Stable Version](https://img.shields.io/packagist/v/laravel/framework)](https://packagist.org/packages/laravel/framework)
-[![Total Downloads](https://img.shields.io/packagist/dt/laravel/framework)](https://packagist.org/packages/laravel/framework)
+[![Build Status](https://github.com/yng13/subscru.jp/actions/workflows/tests/badge.svg)](https://github.com/yng13/subscru.jp/actions/workflows/tests)
 [![License](https://img.shields.io/packagist/l/laravel/framework)](https://opensource.org/licenses/MIT)
 
 ## プロジェクト概要
