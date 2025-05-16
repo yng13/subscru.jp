@@ -52,31 +52,7 @@
 </head>
 <body class="font-sans antialiased bg-gray-100 text-gray-800 leading-relaxed">
 
-{{-- 未認証ユーザー向け簡易ヘッダー --}}
-<header class="bg-white shadow-sm py-4">
-    <div class="container mx-auto px-4 flex justify-between items-center">
-        {{-- サービス名/ロゴ --}}
-        <div class="site-logo text-xl md:text-2xl font-bold text-blue-500">Subscru</div>
-        {{-- ログイン・登録リンク --}}
-        <nav>
-            @if (Route::has('login'))
-                <div class="flex items-center space-x-4">
-                    @auth
-                        {{-- 認証済みの場合はサービス一覧へリダイレクトされる想定なので、ここは表示されない可能性が高いですが、念のため --}}
-                        <a href="{{ url('/my') }}" class="text-gray-700 hover:text-blue-600">サービス一覧</a>
-                    @else
-                        <a href="{{ route('login') }}"
-                           class="text-blue-500 hover:text-blue-600 font-medium">ログイン</a>
-                        @if (Route::has('register'))
-                            <a href="{{ route('register') }}"
-                               class="bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition-colors">無料ではじめる</a>
-                        @endif
-                    @endauth
-                </div>
-            @endif
-        </nav>
-    </div>
-</header>
+@include('partials.header')
 
 <main>
     {{-- 1. ヒーローセクション --}}

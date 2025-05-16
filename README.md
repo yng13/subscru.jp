@@ -1,61 +1,53 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Subscru - サブスクリプション管理ウェブアプリケーション
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+[![Build Status](https://www.google.com/search?q=https://github.com/yng13/subscru.jp/actions/workflows/tests/badge.svg)](https://www.google.com/search?q=https://github.com/yng13/subscru.jp/actions/workflows/tests)
+[![Latest Stable Version](https://img.shields.io/packagist/v/laravel/framework)](https://packagist.org/packages/laravel/framework)
+[![Total Downloads](https://img.shields.io/packagist/dt/laravel/framework)](https://packagist.org/packages/laravel/framework)
+[![License](https://img.shields.io/packagist/l/laravel/framework)](https://opensource.org/licenses/MIT)
 
-## About Laravel
+## プロジェクト概要
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Subscru は、ユーザーが契約しているサブスクリプションサービス（Netflix, Spotify,
+クラウドストレージなど）の情報を一元管理し、特に更新日（通知対象日）をカレンダー連携を通じて把握できるようにするためのウェブアプリケーションです。
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 制作経緯
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+このプロジェクトは、私自身のサブスクリプションサービスの管理の煩雑さを解消したいという思いからスタートしました。複数のサービスを契約していると、それぞれの更新日や料金を把握するのが難しく、意図しない課金が発生するリスクがありました。そこで、これらの情報をまとめて管理し、重要な期日を事前に通知してくれるアプリケーションがあれば便利だと考え、開発に着手しました。
 
-## Learning Laravel
+開発にあたっては、[Gemini](https://gemini.google.com/) をコーディングパートナーとして活用しました。Gemini
+との対話を通じて、認証機能、API連携、フロントエンドの構築、UI/UX
+の改善など、様々な技術的な課題を解決しながらプロジェクトを進めることができました。このリポジトリは、その開発プロセスと成果を記録したものです。
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 技術スタック
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+* **バックエンドフレームワーク:** Laravel 12.x
+* **認証:** Laravel Fortify & Laravel Sanctum
+* **データベース:** (プロジェクトで設定されたデータベース - 例: MySQL, PostgreSQL, SQLite)
+* **フロントエンド:** Bladeテンプレート + Alpine.js v3.x
+* **CSSフレームワーク:** Tailwind CSS v4
+* **ビルドツール:** Vite
+* **その他:** Font Awesome (アイコン), Carbon (日付操作)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 主な機能
 
-## Laravel Sponsors
+* ユーザー登録、ログイン、ログアウト
+* ユーザーに紐づくサブスクリプションサービス情報の登録、編集、削除
+* サービス一覧の表示（ページネーション、ソート、サービス名検索機能付き）
+* 期日接近サービスの視覚的強調
+* iCalフィードURLの生成と配信
+    * ユーザー固有のトークンによるアクセス制御
+    * 通知タイミングを考慮したイベント日付の設定
+    * URLの表示とクリップボードへのコピー
+    * カレンダーアプリへの購読ガイド
+* レスポンシブデザイン対応 (PC版サイドバー/スマホ版ドロワーヘッダー)
+* 各種操作に対するトースト通知
+* クライアントサイドでのフォーム入力検証
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## 今後の展望 (MVP以降に検討)
 
-### Premium Partners
+* 管理者機能 (ユーザー管理、サービス一括管理、サービス名の正規化など)
+* サービスのプランやテンプレート機能
+* 料金管理と合計金額表示
+* より詳細な通知設定
+* 多言語対応
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development/)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
