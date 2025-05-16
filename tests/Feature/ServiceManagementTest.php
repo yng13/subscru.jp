@@ -67,7 +67,7 @@ class ServiceManagementTest extends TestCase
         // テストユーザーに紐づくサービスをいくつか作成
         Service::factory()->count(5)->create(['user_id' => $this->user->id]);
 
-        $response = $this->actingAs($this->user)->get('/api/services'); // 認証済みユーザーとしてAPIにアクセス
+        $response = $this->actingAs($this->user)->getJson('/api/services'); // 認証済みユーザーとしてAPIにアクセス
 
         $response->assertStatus(200) // 成功レスポンスを確認
         ->assertJsonStructure([ // JSON レスポンスの構造を確認 (トップレベルのページネーション構造)
@@ -106,13 +106,12 @@ class ServiceManagementTest extends TestCase
      */
     public function test_unauthenticated_user_cannot_access_service_list_api(): void
     {
-        // 認証を解除する (Auth::logout() はそのまま)
+        // 認証を解除する
         Auth::logout();
 
-        // Sanctum の AuthenticateSession ミドルウェアを一時的に無効にする
-        $this->withoutMiddleware(\Laravel\Sanctum\Http\Middleware\AuthenticateSession::class);
+        // $this->withoutMiddleware(\Laravel\Sanctum\Http\Middleware\AuthenticateSession::class); // この行を削除
 
-        $response = $this->get('/api/services');
+        $response = $this->getJson('/api/services'); // get() を getJson() に変更
 
         // 未認証ユーザーは認証エラー (401 Unauthorized) となることを確認
         $response->assertStatus(401);
@@ -186,7 +185,8 @@ class ServiceManagementTest extends TestCase
             'id' => $service->id,
             'name' => '更新されたサービス名',
             'type' => 'trial',
-            'notification_date' => '2026-01-01 00:00:00', // 時刻部分を追加
+            // 'notification_date' => '2026-01-01', // 元の行
+            'notification_date' => '2026-01-01 00:00:00', // <-- 時刻部分を追加して修正
         ]);
     }
 
@@ -270,28 +270,28 @@ class ServiceManagementTest extends TestCase
         Service::factory()->count(25)->create(['user_id' => $this->user->id]);
 
         // 1ページ目をリクエスト
-        $response = $this->actingAs($this->user)->get('/api/services?page=1&pp=10'); // pp=10 で1ページ10件を指定
+        $response = $this->actingAs($this->user)->getJson('/api/services?page=1&pp=10'); // pp=10 で1ページ10件を指定, getJsonに変更
 
         $response->assertStatus(200)
             ->assertJsonCount(10, 'data') // 1ページ目に10件データが含まれていることを確認
-            ->assertJsonPath('current_page', 1) // 'meta.' を削除
-            ->assertJsonPath('per_page', 10) // 'meta.' を削除
-            ->assertJsonPath('total', 25); // 'meta.' を削除
+            ->assertJsonPath('current_page', 1)
+            ->assertJsonPath('per_page', 10)
+            ->assertJsonPath('total', 25);
 
         // 2ページ目をリクエスト
-        $response = $this->actingAs($this->user)->get('/api/services?page=2&pp=10');
+        $response = $this->actingAs($this->user)->getJson('/api/services?page=2&pp=10'); // getJsonに変更
 
         $response->assertStatus(200)
             ->assertJsonCount(10, 'data') // 2ページ目も10件データが含まれていることを確認
-            ->assertJsonPath('current_page', 2); // 'meta.' を削除
+            ->assertJsonPath('current_page', 2);
 
         // 3ページ目をリクエスト (残り5件)
-        $response = $this->actingAs($this->user)->get('/api/services?page=3&pp=10');
+        $response = $this->actingAs($this->user)->getJson('/api/services?page=3&pp=10'); // getJsonに変更
 
         $response->assertStatus(200)
             ->assertJsonCount(5, 'data') // 3ページ目には5件データが含まれていることを確認
-            ->assertJsonPath('current_page', 3) // 'meta.' を削除
-            ->assertJsonPath('last_page', 3); // 'meta.' を削除
+            ->assertJsonPath('current_page', 3)
+            ->assertJsonPath('last_page', 3);
 
     }
 
@@ -306,7 +306,7 @@ class ServiceManagementTest extends TestCase
         Service::factory()->create(['user_id' => $this->user->id, 'name' => 'Service B', 'notification_date' => '2025-11-20']);
 
         // 通知対象日で昇順ソートをテスト (デフォルト)
-        $response = $this->actingAs($this->user)->get('/api/services?sb=notification_date&sd=asc');
+        $response = $this->actingAs($this->user)->getJson('/api/services?sb=notification_date&sd=asc'); // getJsonに変更
 
         $response->assertStatus(200)
             ->assertJsonCount(3, 'data')
@@ -315,7 +315,7 @@ class ServiceManagementTest extends TestCase
             ->assertJsonPath('data.2.name', 'Service C');
 
         // サービス名で降順ソートをテスト
-        $response = $this->actingAs($this->user)->get('/api/services?sb=name&sd=desc');
+        $response = $this->actingAs($this->user)->getJson('/api/services?sb=name&sd=desc'); // getJsonに変更
 
         $response->assertStatus(200)
             ->assertJsonCount(3, 'data')
@@ -324,7 +324,7 @@ class ServiceManagementTest extends TestCase
             ->assertJsonPath('data.2.name', 'Service A');
 
         // 許可されていないソートキーを指定した場合のテスト (デフォルトに戻るか確認)
-        $response = $this->actingAs($this->user)->get('/api/services?sb=invalid_column&sd=desc');
+        $response = $this->actingAs($this->user)->getJson('/api/services?sb=invalid_column&sd=desc'); // getJsonに変更
 
         $response->assertStatus(200);
         // デフォルトのソート (notification_date asc) が適用されていることを確認
@@ -342,21 +342,21 @@ class ServiceManagementTest extends TestCase
         Service::factory()->create(['user_id' => $this->user->id, 'name' => 'Google Cloud Storage']);
 
         // 'Music' で検索
-        $response = $this->actingAs($this->user)->get('/api/services?q=Music');
+        $response = $this->actingAs($this->user)->getJson('/api/services?q=Music'); // getJsonに変更
 
         $response->assertStatus(200)
             ->assertJsonCount(1, 'data') // 検索結果が1件であることを確認
             ->assertJsonPath('data.0.name', 'Apple Music'); // Apple Music が検索されたことを確認
 
         // 'Google' で検索
-        $response = $this->actingAs($this->user)->get('/api/services?q=Google');
+        $response = $this->actingAs($this->user)->getJson('/api/services?q=Google'); // getJsonに変更
 
         $response->assertStatus(200)
             ->assertJsonCount(1, 'data') // 検索結果が1件であることを確認
             ->assertJsonPath('data.0.name', 'Google Cloud Storage'); // Google Cloud Storage が検索されたことを確認
 
         // 存在しないキーワードで検索
-        $response = $this->actingAs($this->user)->get('/api/services?q=NonExistent');
+        $response = $this->actingAs($this->user)->getJson('/api/services?q=NonExistent'); // getJsonに変更
 
         $response->assertStatus(200)
             ->assertJsonCount(0, 'data'); // 検索結果が0件であることを確認
@@ -370,7 +370,7 @@ class ServiceManagementTest extends TestCase
         // UserFactory で ical_token が生成されている前提
         // setUp() で actingAs($this->user) されているので、認証済み状態
 
-        $response = $this->actingAs($this->user)->get('/api/user');
+        $response = $this->actingAs($this->user)->getJson('/api/user'); // getJsonに変更
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -396,11 +396,9 @@ class ServiceManagementTest extends TestCase
     public function test_unauthenticated_user_cannot_get_ical_feed_url(): void
     {
         // 認証を解除
-        //$this->withoutMiddleware(\Illuminate\Auth\Middleware\Authenticate::class);
-        //$this->user = null;
         Auth::logout();
 
-        $response = $this->get('/api/user');
+        $response = $this->getJson('/api/user'); // get() を getJson() に変更
 
         // 未認証ユーザーは認証エラー (401 Unauthorized) となることを確認
         $response->assertStatus(401);
@@ -419,10 +417,11 @@ class ServiceManagementTest extends TestCase
         Service::factory()->create(['user_id' => $this->user->id, 'name' => 'iCal Test Service', 'notification_date' => '2025-12-25', 'notification_timing' => 0]);
 
         // iCalフィードのURLを取得 (トークンは user プロパティから)
+        // iCalフィード自体は認証なしでアクセスされるルートなので、get() を使用
         $icalFeedUrl = route('ical.feed', ['token' => $this->user->ical_token], false);
 
         // iCalフィードのURLにアクセス
-        $response = $this->get($icalFeedUrl);
+        $response = $this->get($icalFeedUrl); // ここはAPIルートではないため get() のまま
 
         $response->assertStatus(200) // 成功レスポンスを確認
         ->assertHeader('Content-Type', 'text/calendar; charset=utf-8') // Content-Type を確認
@@ -441,10 +440,11 @@ class ServiceManagementTest extends TestCase
     {
         // 存在しない無効なトークンでiCalフィードのURLを生成
         $invalidToken = 'invalid_ical_token_1234567890abcdef';
+        // iCalフィード自体は認証なしでアクセスされるルートなので、get() を使用
         $icalFeedUrl = route('ical.feed', ['token' => $invalidToken], false);
 
         // 無効なトークンでiCalフィードのURLにアクセス
-        $response = $this->get($icalFeedUrl);
+        $response = $this->get($icalFeedUrl); // ここはAPIルートではないため get() のまま
 
         $response->assertStatus(404) // Not Found (404) となることを確認
         ->assertSeeText('Calendar not found.'); // コントローラーで設定したエラーメッセージを確認
