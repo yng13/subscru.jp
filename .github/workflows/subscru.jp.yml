@@ -49,15 +49,11 @@ jobs:
         run: npm run build
 
       - name: Run JavaScript tests # JavaScript テストを実行
-        run: | # <-- 複数行コマンドにする
-          export CI=true
-          export APP_ENV=testing
-          export LARAVEL_BYPASS_ENV_CHECK=1
-          npm run test --coverage # または npm run test
-          # env: # <-- env ブロックは削除またはコメントアウト
-          #   CI: true
-          #   APP_ENV: testing
-          #   LARAVEL_BYPASS_ENV_CHECK: 1
+        run: npm run test --coverage # または npm run test
+        env: # <-- env ブロックは削除またはコメントアウト
+          CI: true
+          APP_ENV: testing
+          LARAVEL_BYPASS_ENV_CHECK: 1
 
       - name: Execute tests (Unit and Feature tests) via PHPUnit/Pest
         env:
