@@ -4,6 +4,9 @@ import tailwindcss from '@tailwindcss/vite';
 
 import fs from "fs"; // fs モジュールは https 設定でのみ使用されるため、条件付きインポートも考えられるが、ここではシンプルにそのままインポート
 
+// Vitest の設定をインポート
+import {mergeConfig} from 'vite'; // mergeConfig をインポート
+
 export default defineConfig(({command, mode}) => { // <-- ここを修正: { command, mode } を受け取る関数形式に変更
     const config = {
         plugins: [
@@ -40,6 +43,19 @@ export default defineConfig(({command, mode}) => { // <-- ここを修正: { com
     //     // プロダクション固有のビルド設定などを追加
     //     config.build.sourcemap = false;
     // }
+
+    // Vitest の設定を開発モードまたはテストモードでのみマージする
+    if (mode === 'development' || mode === 'test') { // <-- test モードも追加
+        return mergeConfig(config, {
+            test: {
+                globals: true, // describe, it, expect などをグローバルに使用できるようにする
+                environment: 'jsdom', // DOM 環境を使用
+                // coverage: { enabled: true }, // カバレッジを収集する場合
+                // setupFiles: './tests/js/setup.js', // テストセットアップファイル (任意)
+                // testMatch: ['resources/js/**/*.test.js'], // テストファイルのパターン (任意)
+            }
+        });
+    }
 
     return config;
 });
