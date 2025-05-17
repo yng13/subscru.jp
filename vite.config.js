@@ -5,10 +5,8 @@ import tailwindcss from '@tailwindcss/vite';
 import fs from "fs";
 
 // Vitest の設定をインポート (vitest.config.js を使用する場合)
-// import { mergeConfig } from 'vite';
+import {mergeConfig} from 'vite';
 // import vitestConfig from './vitest.config';
-
-// ... (既存の import 文など) ...
 
 export default defineConfig(({command, mode}) => { // <-- ここはそのまま
     const config = {
