@@ -2,12 +2,15 @@ import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 
-import fs from "fs"; // fs モジュールは https 設定でのみ使用されるため、条件付きインポートも考えられるが、ここではシンプルにそのままインポート
+import fs from "fs";
 
-// Vitest の設定をインポート
-import {mergeConfig} from 'vite'; // mergeConfig をインポート
+// Vitest の設定をインポート (vitest.config.js を使用する場合)
+// import { mergeConfig } from 'vite';
+// import vitestConfig from './vitest.config';
 
-export default defineConfig(({command, mode}) => { // <-- ここを修正: { command, mode } を受け取る関数形式に変更
+// ... (既存の import 文など) ...
+
+export default defineConfig(({command, mode}) => { // <-- ここはそのまま
     const config = {
         plugins: [
             laravel({
@@ -16,46 +19,54 @@ export default defineConfig(({command, mode}) => { // <-- ここを修正: { com
             }),
             tailwindcss(),
         ],
-        // server 設定全体を条件付きにするか、または https 部分のみ条件付きにする
+        // server 設定
         server: {
-            host: "dev.subscru.jp", // このホスト設定も開発環境のみの場合がある
-            hmr: {
-                host: "dev.subscru.jp",
-                protocol: "wss",
-            },
-            cors: true,
-            // https 設定を development モードでのみ適用
-            ...(mode === 'development' ? { // <-- 条件付きスプレッド構文を使用
-                https: {
+            cors: true, // CORS は開発/テストで必要なので常に有効
+
+            // 開発モード (development) でのみ HMR と HTTPS 設定、および開発用ホストを有効にする
+            ...(mode === 'development' ? {
+                host: "dev.subscru.jp", // 開発用ホスト名
+                hmr: { // <-- HMR 設定を条件付きにする
+                    host: "dev.subscru.jp",
+                    protocol: "wss",
+                },
+                https: { // <-- HTTPS 設定 (既に条件付きですが、確認)
                     key: fs.readFileSync("/var/www/html/subscru.jp/subscru.key"),
                     cert: fs.readFileSync("/var/www/html/subscru.jp/subscru.crt"),
                 },
-            } : {}), // development モードでない場合は空のオブジェクトをスプレッド
+            } : {
+                // 開発モード以外 (production, test など) では HMR, HTTPS は無効
+                // ホストも開発用ではないものを指定するか、またはデフォルトに任せる
+                // CI環境やプロダクションでは、通常 localhost などで十分です
+                host: 'localhost', // 例: テスト環境やプロダクションでは localhost を使う
+            }),
         },
-        // ビルド設定 (通常は mode が production の場合に適用されるデフォルト設定を上書きする場合に使用)
+        // build 設定 (デフォルトを使用するか、productionモードでのみ適用する設定を記述)
         build: {
-            // 例: outDir: 'public/build', // デフォルト設定と同じ場合、記述は必須ではない
+            // ...
         }
     };
 
-    // 必要に応じて mode ごとに別の設定を追加・上書きすることも可能
-    // if (mode === 'production') {
-    //     // プロダクション固有のビルド設定などを追加
-    //     config.build.sourcemap = false;
-    // }
+    // Vitest の設定をテストモードでのみマージする (vitest.config.js を使用しない場合)
+    // vitest.config.js を使用する場合は、そちらの設定ファイルで test ブロックを定義し、mergeConfig を使用します。
+    if (mode === 'test') {
+        // Vitest の設定をここに直接記述するか、別途 vitest.config.js を用意して mergeConfig でマージ
+        // 例: vitest.config.js を別途用意している場合
+        // import vitestConfig from './vitest.config';
+        // return mergeConfig(config, vitestConfig);
 
-    // Vitest の設定を開発モードまたはテストモードでのみマージする
-    if (mode === 'development' || mode === 'test') { // <-- test モードも追加
+        // Vitest の設定をここに直接記述する場合
         return mergeConfig(config, {
             test: {
-                globals: true, // describe, it, expect などをグローバルに使用できるようにする
-                environment: 'jsdom', // DOM 環境を使用
-                // coverage: { enabled: true }, // カバレッジを収集する場合
-                // setupFiles: './tests/js/setup.js', // テストセットアップファイル (任意)
-                // testMatch: ['resources/js/**/*.test.js'], // テストファイルのパターン (任意)
+                globals: true,
+                environment: 'jsdom',
+                // coverage: { enabled: true },
+                // setupFiles: './tests/js/setup.js',
+                // testMatch: ['resources/js/**/*.test.js'],
             }
         });
     }
 
-    return config;
+
+    return config; // 開発モードまたはプロダクションモードの場合
 });
